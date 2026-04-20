@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NLP Text Analyzer</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8f9fa; color: #1a1a1a; padding: 2rem; }
+    .container { max-width: 760px; margin: 0 auto; }
+    h1 { font-size: 26px; font-weight: 700; margin-bottom: 4px; }
+    .sub { color: #666; font-size: 14px; margin-bottom: 1rem; }
+    .badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; margin-right: 6px; }
+    .b1 { background: #ede9fe; color: #5b21b6; }
+    .b2 { background: #d1fae5; color: #065f46; }
+    textarea { width: 100%; min-height: 130px; padding: 14px; border: 1px solid #ddd; border-radius: 10px; font-size: 14px; line-height: 1.6; resize: vertical; margin-top: 1.25rem; background: #fff; }
+    textarea:focus { outline: none; border-color: #7c3aed; box-shadow: 0 0 0 3px rgba(124,58,237,0.1); }
+    .examples { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; align-items: center; }
+    .chip { font-size: 12px; padding: 5px 12px; border-radius: 20px; border: 1px solid #ddd; cursor: pointer; background: #fff; color: #555; transition: all 0.15s; }
+    .chip:hover { border-color: #7c3aed; color: #7c3aed; }
+    .btn-row { display: flex; gap: 10px; margin-top: 12px; align-items: center; }
+    .btn { padding: 10px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; border: 1px solid #ddd; background: #fff; transition: all 0.15s; }
+    .btn:hover { background: #f3f4f6; }
+    .btn.primary { background: #7c3aed; color: #fff; border-color: #7c3aed; }
+    .btn.primary:hover { background: #6d28d9; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .loader { display: none; align-items: center; gap: 10px; padding: 1rem 0; color: #666; font-size: 14px; }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: #7c3aed; animation: bounce 1.2s infinite; }
+    .dot:nth-child(2) { animation-delay: 0.2s; }
+    .dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes bounce { 0%,80%,100%{transform:scale(0.6);opacity:0.4} 40%{transform:scale(1);opacity:1} }
+    .error { background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px; padding: 12px 16px; font-size: 13px; color: #b91c1c; margin-top: 12px; display: none; word-break: break-word; line-height: 1.6; }
+    .results { margin-top: 1.5rem; display: none; flex-direction: column; gap: 14px; }
+    .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 1.25rem; }
+    .card-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #9ca3af; margin-bottom: 12px; }
+    .sentiment-row { display: flex; align-items: center; gap: 12px; }
+    .s-pill { padding: 5px 16px; border-radius: 20px; font-weight: 600; font-size: 14px; text-transform: capitalize; }
+    .s-positive { background: #d1fae5; color: #065f46; }
+    .s-negative { background: #fee2e2; color: #991b1b; }
+    .s-neutral  { background: #f3f4f6; color: #374151; }
+    .s-mixed    { background: #fef3c7; color: #92400e; }
+    .bar-track { flex: 1; height: 8px; background: #f3f4f6; border-radius: 4px; overflow: hidden; }
+    .bar-fill  { height: 100%; border-radius: 4px; transition: width 0.7s ease; }
+    .expl { font-size: 13px; color: #6b7280; margin-top: 10px; line-height: 1.6; }
+    .tone-row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; align-items: center; }
+    .tone-lbl  { font-size: 12px; color: #9ca3af; font-weight: 600; }
+    .tone-chip { font-size: 13px; padding: 3px 12px; background: #f3f4f6; border-radius: 20px; color: #374151; }
+    .ent-wrap { display: flex; flex-wrap: wrap; gap: 8px; }
+    .ent { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; padding: 4px 10px; border-radius: 6px; }
+    .ent-lbl { font-size: 10px; font-weight: 700; opacity: 0.65; }
+    .PERSON  { background: #ede9fe; color: #5b21b6; }
+    .ORG     { background: #d1fae5; color: #065f46; }
+    .GPE, .LOC   { background: #dbeafe; color: #1e40af; }
+    .DATE, .TIME { background: #fef3c7; color: #92400e; }
+    .MONEY, .PERCENT { background: #dcfce7; color: #166534; }
+    .LAW, .PRODUCT   { background: #fee2e2; color: #991b1b; }
+    .OTHER { background: #f3f4f6; color: #374151; }
+    .kw-wrap { display: flex; flex-wrap: wrap; gap: 8px; }
+    .kw { font-size: 13px; padding: 4px 12px; border-radius: 20px; background: #f3f4f6; color: #374151; border: 1px solid #e5e7eb; }
+    .kw.high { background: #ede9fe; color: #5b21b6; border-color: #c4b5fd; font-weight: 600; }
+    .summary-text { font-size: 14px; line-height: 1.8; color: #374151; }
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 10px; }
+    .stat { background: #f9fafb; border-radius: 8px; padding: 12px; text-align: center; border: 1px solid #f3f4f6; }
+    .stat-n { font-size: 22px; font-weight: 700; color: #111827; }
+    .stat-l { font-size: 11px; color: #9ca3af; margin-top: 2px; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>NLP text analyzer</h1>
+  <p class="sub">Sentiment · Named entities · Key phrases — powered by Claude AI</p>
+  <span class="badge b1">NLP</span>
+  <span class="badge b2">FastAPI + Anthropic</span>
+
+  <textarea id="txt" placeholder="Paste any text — news article, product review, legal clause, earnings call..."></textarea>
+
+  <div class="examples">
+    <span style="font-size:12px;color:#9ca3af">Examples:</span>
+    <span class="chip" onclick="setEx('news')">News article</span>
+    <span class="chip" onclick="setEx('review')">Product review</span>
+    <span class="chip" onclick="setEx('legal')">Legal clause</span>
+    <span class="chip" onclick="setEx('finance')">Earnings call</span>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn primary" id="btn" onclick="analyze()">Analyze text</button>
+    <button class="btn" onclick="clearAll()">Clear</button>
+    <span id="cc" style="font-size:12px;color:#9ca3af;margin-left:auto"></span>
+  </div>
+
+  <div class="loader" id="loader">
+    <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+    <span>Analyzing with NLP...</span>
+  </div>
+  <div class="error" id="err"></div>
+  <div class="results" id="results"></div>
+</div>
+
+<script>
+const API = 'http://localhost:8000';
+
+const EX = {
+  news:    "Apple Inc. reported record quarterly revenue of $123.9 billion in Q1 2024, driven by strong iPhone 15 sales in China and India. CEO Tim Cook praised the company's performance in emerging markets but warned that supply chain disruptions in Taiwan could impact next quarter's output.",
+  review:  "I've been using this product for 3 months and honestly it's been a game-changer. The build quality is exceptional, battery lasts 48 hours, and customer support from TechCorp was incredibly responsive. The only downside is the price — at $299 it's on the expensive side, but absolutely worth it.",
+  legal:   "This Agreement shall be governed by the laws of the State of New York. The parties agree to submit to binding arbitration in New York County. The Company shall indemnify and hold harmless Employee from any claims arising from acts performed in good faith within the scope of employment.",
+  finance: "Goldman Sachs raised its 12-month price target for Microsoft from $420 to $500, citing Azure cloud growth of 28% YoY and robust enterprise AI adoption. Analyst Sarah Chen noted that Copilot integration has accelerated deal cycles by roughly 15%."
+};
+
+function setEx(k) {
+  document.getElementById('txt').value = EX[k];
+  document.getElementById('cc').textContent = EX[k].length + ' chars';
+}
+
+document.getElementById('txt').addEventListener('input', function() {
+  document.getElementById('cc').textContent = this.value.length ? this.value.length + ' chars' : '';
+});
+
+function clearAll() {
+  document.getElementById('txt').value = '';
+  document.getElementById('cc').textContent = '';
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('err').style.display = 'none';
+}
+
+function wc(t)  { return t.trim().split(/\s+/).filter(Boolean).length; }
+function sc(t)  { return (t.match(/[.!?]+/g) || []).length || 1; }
+function awl(t) {
+  const w = t.trim().split(/\s+/).filter(Boolean);
+  return w.length ? +(w.reduce((s,x) => s + x.replace(/[^a-z]/gi,'').length, 0) / w.length).toFixed(1) : 0;
+}
+
+async function analyze() {
+  const text = document.getElementById('txt').value.trim();
+  if (!text || text.length < 20) { showErr('Please enter at least 20 characters.'); return; }
+
+  const btn = document.getElementById('btn');
+  btn.disabled = true;
+  document.getElementById('loader').style.display = 'flex';
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('err').style.display = 'none';
+
+  try {
+    const resp = await fetch(`${API}/analyze`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.detail || resp.statusText);
+    render(data, text);
+  } catch(e) {
+    if (e.message.includes('fetch')) {
+      showErr('Cannot reach backend. Make sure the server is running:\n  uvicorn backend.demo1.main:app --reload --port 8000');
+    } else {
+      showErr(e.message);
+    }
+  } finally {
+    btn.disabled = false;
+    document.getElementById('loader').style.display = 'none';
+  }
+}
+
+function showErr(msg) {
+  const d = document.getElementById('err');
+  d.textContent = 'Error: ' + msg;
+  d.style.display = 'block';
+}
+
+function sColor(l) {
+  return { positive:'#10b981', negative:'#ef4444', neutral:'#9ca3af', mixed:'#f59e0b' }[l] || '#9ca3af';
+}
+
+function render(d, orig) {
+  const words = wc(orig), sents = sc(orig), avgwl = awl(orig);
+  const rl = Math.round(206.835 - 1.015*(words/sents) - 84.6*avgwl);
+  const readLabel = rl > 70 ? 'Easy' : rl > 50 ? 'Standard' : 'Complex';
+  const sPct = Math.round((d.sentiment.score || 0) * 100);
+
+  const toneHtml = (d.tone || [])
+    .map(t => `<span class="tone-chip">${t}</span>`).join('');
+
+  const entHtml = (d.entities || []).length
+    ? (d.entities).map(e =>
+        `<span class="ent ${e.type || 'OTHER'}">${e.text}<span class="ent-lbl">${e.type}</span></span>`
+      ).join('')
+    : '<span style="font-size:13px;color:#9ca3af">None detected</span>';
+
+  const kwHtml = (d.keywords || [])
+    .map(k => `<span class="kw ${k.importance === 'high' ? 'high' : ''}">${k.word}</span>`).join('');
+
+  document.getElementById('results').innerHTML = `
+    <div class="card">
+      <div class="card-title">Sentiment analysis</div>
+      <div class="sentiment-row">
+        <span class="s-pill s-${d.sentiment.label}">${d.sentiment.label}</span>
+        <div class="bar-track">
+          <div class="bar-fill" style="width:${sPct}%;background:${sColor(d.sentiment.label)}"></div>
+        </div>
+        <span style="font-size:13px;font-weight:700;color:#6b7280;min-width:38px;text-align:right">${sPct}%</span>
+      </div>
+      <p class="expl">${d.sentiment.explanation}</p>
+      <div class="tone-row">
+        <span class="tone-lbl">Tone:</span>${toneHtml}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Named entities</div>
+      <div class="ent-wrap">${entHtml}</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Key phrases</div>
+      <div class="kw-wrap">${kwHtml}</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Plain language summary</div>
+      <p class="summary-text">${d.summary}</p>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Text statistics</div>
+      <div class="stats">
+        <div class="stat"><div class="stat-n">${words}</div><div class="stat-l">words</div></div>
+        <div class="stat"><div class="stat-n">${sents}</div><div class="stat-l">sentences</div></div>
+        <div class="stat"><div class="stat-n">${avgwl}</div><div class="stat-l">avg word len</div></div>
+        <div class="stat"><div class="stat-n">${readLabel}</div><div class="stat-l">readability</div></div>
+        <div class="stat"><div class="stat-n">${(d.entities||[]).length}</div><div class="stat-l">entities</div></div>
+      </div>
+    </div>`;
+
+  document.getElementById('results').style.display = 'flex';
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Legal Document Intelligence Engine</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8f9fa; color: #1a1a1a; padding: 2rem; }
+    .container { max-width: 780px; margin: 0 auto; }
+    h1 { font-size: 26px; font-weight: 700; margin-bottom: 4px; }
+    .sub { color: #666; font-size: 14px; margin-bottom: 1rem; }
+    .badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; margin-right: 6px; }
+    .b1 { background: #fee2e2; color: #991b1b; }
+    .b2 { background: #d1fae5; color: #065f46; }
+    .b3 { background: #ede9fe; color: #5b21b6; }
+    textarea { width: 100%; min-height: 140px; padding: 14px; border: 1px solid #ddd; border-radius: 10px; font-size: 13px; font-family: 'Courier New', monospace; line-height: 1.6; resize: vertical; margin-top: 1.25rem; background: #fff; }
+    textarea:focus { outline: none; border-color: #dc2626; box-shadow: 0 0 0 3px rgba(220,38,38,0.1); }
+    .examples { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; align-items: center; }
+    .chip { font-size: 12px; padding: 5px 12px; border-radius: 20px; border: 1px solid #ddd; cursor: pointer; background: #fff; color: #555; transition: all 0.15s; }
+    .chip:hover { border-color: #dc2626; color: #dc2626; }
+    .btn-row { display: flex; gap: 10px; margin-top: 12px; align-items: center; }
+    .btn { padding: 10px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; border: 1px solid #ddd; background: #fff; transition: all 0.15s; }
+    .btn:hover { background: #f3f4f6; }
+    .btn.primary { background: #dc2626; color: #fff; border-color: #dc2626; }
+    .btn.primary:hover { background: #b91c1c; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .loader { display: none; align-items: center; gap: 10px; padding: 1rem 0; color: #666; font-size: 14px; }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: #dc2626; animation: bounce 1.2s infinite; }
+    .dot:nth-child(2) { animation-delay: 0.2s; }
+    .dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes bounce { 0%,80%,100%{transform:scale(0.6);opacity:0.4} 40%{transform:scale(1);opacity:1} }
+    .error { background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px; padding: 12px 16px; font-size: 13px; color: #b91c1c; margin-top: 12px; display: none; word-break: break-word; line-height: 1.6; }
+    .results { margin-top: 1.5rem; display: none; flex-direction: column; gap: 14px; }
+    .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 1.25rem; }
+    .card-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #9ca3af; margin-bottom: 12px; }
+
+    /* Risk */
+    .risk-header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+    .risk-label { font-size: 15px; font-weight: 700; text-transform: uppercase; min-width: 75px; }
+    .risk-low      { color: #16a34a; }
+    .risk-medium   { color: #d97706; }
+    .risk-high     { color: #dc2626; }
+    .risk-critical { color: #7f1d1d; }
+    .bar-track { flex: 1; height: 10px; background: #f3f4f6; border-radius: 5px; overflow: hidden; min-width: 100px; }
+    .bar-fill  { height: 100%; border-radius: 5px; transition: width 0.7s ease; }
+    .risk-score { font-size: 13px; font-weight: 700; color: #6b7280; min-width: 42px; text-align: right; }
+    .favor-pill { font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 20px; }
+    .favor-balanced { background: #d1fae5; color: #065f46; }
+    .favor-party    { background: #fef3c7; color: #92400e; }
+
+    /* Flags */
+    .flag { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border-radius: 8px; margin-bottom: 8px; border-left: 3px solid; }
+    .flag:last-child { margin-bottom: 0; }
+    .flag-high   { background: #fef2f2; border-color: #ef4444; }
+    .flag-medium { background: #fffbeb; border-color: #f59e0b; }
+    .flag-low    { background: #f0fdf4; border-color: #22c55e; }
+    .flag-icon   { font-size: 13px; font-weight: 800; flex-shrink: 0; margin-top: 1px; }
+    .flag-high   .flag-icon { color: #dc2626; }
+    .flag-medium .flag-icon { color: #d97706; }
+    .flag-low    .flag-icon { color: #16a34a; }
+    .flag-title  { font-size: 13px; font-weight: 600; color: #111827; }
+    .flag-desc   { font-size: 12px; color: #6b7280; margin-top: 3px; line-height: 1.5; }
+
+    /* Summary box */
+    .summary-box { font-size: 14px; line-height: 1.8; color: #374151; padding: 14px 16px; background: #fef2f2; border-radius: 8px; border-left: 4px solid #dc2626; }
+
+    /* Clauses */
+    .clause-row { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; background: #f9fafb; border-radius: 8px; margin-bottom: 8px; border: 1px solid #f3f4f6; }
+    .clause-row:last-child { margin-bottom: 0; }
+    .clause-type { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 20px; white-space: nowrap; flex-shrink: 0; margin-top: 2px; }
+    .ct-indemnification { background: #fee2e2; color: #991b1b; }
+    .ct-termination     { background: #fef2f2; color: #b91c1c; }
+    .ct-payment         { background: #d1fae5; color: #065f46; }
+    .ct-confidentiality { background: #ede9fe; color: #5b21b6; }
+    .ct-jurisdiction    { background: #dbeafe; color: #1e40af; }
+    .ct-arbitration     { background: #fef3c7; color: #92400e; }
+    .ct-liability       { background: #fce7f3; color: #9d174d; }
+    .ct-ip              { background: #ccfbf1; color: #115e59; }
+    .ct-other           { background: #f3f4f6; color: #374151; }
+    .clause-excerpt { font-size: 12px; font-style: italic; color: #6b7280; margin-bottom: 3px; }
+    .clause-note    { font-size: 12px; color: #9ca3af; }
+
+    /* Obligations */
+    .ob-row { display: flex; gap: 12px; font-size: 13px; padding: 8px 0; border-bottom: 1px solid #f3f4f6; align-items: flex-start; }
+    .ob-row:last-child { border-bottom: none; }
+    .ob-party { font-weight: 700; min-width: 110px; color: #374151; flex-shrink: 0; font-size: 12px; }
+    .ob-text  { color: #6b7280; line-height: 1.5; flex: 1; }
+
+    /* Entities */
+    .ent-wrap { display: flex; flex-wrap: wrap; gap: 8px; }
+    .ent { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; padding: 4px 10px; border-radius: 6px; }
+    .ent-lbl { font-size: 10px; font-weight: 700; opacity: 0.65; }
+    .et-party        { background: #ede9fe; color: #5b21b6; }
+    .et-date         { background: #fef3c7; color: #92400e; }
+    .et-money        { background: #d1fae5; color: #065f46; }
+    .et-jurisdiction { background: #dbeafe; color: #1e40af; }
+    .et-other        { background: #f3f4f6; color: #374151; }
+
+    /* Metrics */
+    .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; }
+    .metric { background: #f9fafb; border-radius: 8px; padding: 12px; text-align: center; border: 1px solid #f3f4f6; }
+    .metric-n { font-size: 22px; font-weight: 700; }
+    .metric-l { font-size: 11px; color: #9ca3af; margin-top: 2px; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>Legal document intelligence engine</h1>
+  <p class="sub">AI-powered clause analysis, risk scoring, and obligation extraction</p>
+  <span class="badge b1">Advanced NLP</span>
+  <span class="badge b2">Risk Analysis</span>
+  <span class="badge b3">Production-grade</span>
+
+  <textarea id="txt" placeholder="Paste contract text, clause, or legal document excerpt here..."></textarea>
+
+  <div class="examples">
+    <span style="font-size:12px;color:#9ca3af">Load sample:</span>
+    <span class="chip" onclick="setEx('nda')">NDA excerpt</span>
+    <span class="chip" onclick="setEx('saas')">SaaS contract</span>
+    <span class="chip" onclick="setEx('employment')">Employment agreement</span>
+    <span class="chip" onclick="setEx('acquisition')">M&amp;A clause</span>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn primary" id="btn" onclick="analyze()">Run analysis</button>
+    <button class="btn" onclick="clearAll()">Clear</button>
+    <span id="cc" style="font-size:12px;color:#9ca3af;margin-left:auto"></span>
+  </div>
+
+  <div class="loader" id="loader">
+    <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+    <span id="lmsg">Parsing legal structure...</span>
+  </div>
+  <div class="error" id="err"></div>
+  <div class="results" id="results"></div>
+</div>
+
+<script>
+const API = 'http://localhost:8001';
+
+const EX = {
+  nda: `This Non-Disclosure Agreement ("Agreement") is entered into as of January 15, 2025, between Vertex Capital Partners LLC ("Disclosing Party") and NeuralPath Technologies Inc. ("Receiving Party"). The Receiving Party agrees to maintain strict confidentiality of all Proprietary Information for a period of five (5) years from the date of disclosure. In the event of breach, the Disclosing Party shall be entitled to seek injunctive relief without posting bond, in addition to all other remedies available at law or in equity. This Agreement shall be governed by the laws of Delaware, with exclusive jurisdiction in the Court of Chancery of the State of Delaware.`,
+  saas: `Customer shall pay Provider a monthly subscription fee of $12,500, due within 30 days of invoice. Provider warrants that the Service will perform materially in accordance with documentation for 12 months. PROVIDER'S TOTAL CUMULATIVE LIABILITY SHALL NOT EXCEED THE FEES PAID IN THE THREE (3) MONTHS PRECEDING THE CLAIM. Either party may terminate this Agreement upon 60 days written notice. Customer grants Provider a non-exclusive license to use Customer Data solely to provide the Service. Provider shall maintain SOC 2 Type II compliance throughout the Term.`,
+  employment: `Employee shall receive a base salary of $185,000 per year, reviewed annually. Employee agrees that during employment and for 18 months thereafter, Employee will not directly or indirectly solicit or hire any employee of the Company. All inventions conceived by Employee during employment shall be the exclusive property of the Company. The Company may terminate Employee's employment at will, with or without cause, upon providing 30 days written notice or equivalent severance pay. In the event of dispute, the parties agree to binding arbitration under AAA Commercial Rules in New York County, New York.`,
+  acquisition: `The Buyer shall pay an aggregate purchase price of USD 47,500,000, consisting of $35,000,000 in cash at Closing and $12,500,000 in contingent earn-out payments tied to EBITDA targets over 24 months post-Closing. The Seller shall indemnify Buyer for losses arising from any breach of representations exceeding the Indemnification Threshold of $250,000, capped at 15% of the Purchase Price. This Agreement shall be interpreted under the laws of New York. Closing shall occur no later than March 31, 2025, subject to regulatory approval under the Hart-Scott-Rodino Act.`
+};
+
+const lmsgs = ['Parsing legal structure...', 'Classifying clauses...', 'Identifying risk factors...', 'Extracting obligations...'];
+let mi = 0, mt = null;
+
+function setEx(k) {
+  document.getElementById('txt').value = EX[k];
+  document.getElementById('cc').textContent = EX[k].length + ' chars';
+}
+
+document.getElementById('txt').addEventListener('input', function() {
+  document.getElementById('cc').textContent = this.value.length ? this.value.length + ' chars' : '';
+});
+
+function clearAll() {
+  document.getElementById('txt').value = '';
+  document.getElementById('cc').textContent = '';
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('err').style.display = 'none';
+}
+
+async function analyze() {
+  const text = document.getElementById('txt').value.trim();
+  if (!text || text.length < 50) { showErr('Please enter at least 50 characters of legal text.'); return; }
+
+  const btn = document.getElementById('btn');
+  btn.disabled = true;
+  document.getElementById('loader').style.display = 'flex';
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('err').style.display = 'none';
+
+  mi = 0;
+  document.getElementById('lmsg').textContent = lmsgs[0];
+  mt = setInterval(() => {
+    mi = (mi + 1) % lmsgs.length;
+    document.getElementById('lmsg').textContent = lmsgs[mi];
+  }, 1500);
+
+  try {
+    const resp = await fetch(`${API}/analyze`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.detail || resp.statusText);
+    render(data);
+  } catch(e) {
+    if (e.message.includes('fetch')) {
+      showErr('Cannot reach backend. Make sure the server is running:\n  uvicorn backend.demo2.main:app --reload --port 8001');
+    } else {
+      showErr(e.message);
+    }
+  } finally {
+    btn.disabled = false;
+    clearInterval(mt);
+    document.getElementById('loader').style.display = 'none';
+  }
+}
+
+function showErr(msg) {
+  const d = document.getElementById('err');
+  d.textContent = 'Error: ' + msg;
+  d.style.display = 'block';
+}
+
+function riskColor(l) {
+  return { low:'#16a34a', medium:'#d97706', high:'#dc2626', critical:'#7f1d1d' }[l] || '#9ca3af';
+}
+
+function render(d) {
+  const rPct  = Math.min(100, Math.max(0, d.risk.score || 0));
+  const rCol  = riskColor(d.risk.level);
+  const rCls  = 'risk-' + (d.risk.level || 'low');
+  const favor = (d.favor_party || '').toLowerCase() === 'balanced';
+
+  // Risk flags
+  const flagsHtml = (d.risk_flags || []).map(f => {
+    const cls  = 'flag-' + (f.severity || 'low');
+    const icon = f.severity === 'high' ? '!' : f.severity === 'medium' ? '~' : '+';
+    return `<div class="flag ${cls}">
+      <span class="flag-icon">${icon}</span>
+      <div>
+        <div class="flag-title">${f.title}</div>
+        <div class="flag-desc">${f.description}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Clauses
+  const clauseHtml = (d.clauses || []).map(c => {
+    const ct = 'ct-' + (c.type || 'other');
+    return `<div class="clause-row">
+      <span class="clause-type ${ct}">${c.type}</span>
+      <div>
+        <div class="clause-excerpt">"${c.text}"</div>
+        <div class="clause-note">${c.note}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Entities
+  const entHtml = (d.entities || []).map(e =>
+    `<span class="ent et-${e.type || 'other'}">${e.text}<span class="ent-lbl">${e.type}</span></span>`
+  ).join('') || '<span style="font-size:13px;color:#9ca3af">None detected</span>';
+
+  // Obligations
+  const obHtml = (d.obligations || []).map(o =>
+    `<div class="ob-row"><span class="ob-party">${o.party}</span><span class="ob-text">${o.obligation}</span></div>`
+  ).join('');
+
+  // Favor pill
+  const favorHtml = favor
+    ? `<span class="favor-pill favor-balanced">Balanced</span>`
+    : `<span class="favor-pill favor-party">Favors: ${d.favor_party}</span>`;
+
+  document.getElementById('results').innerHTML = `
+    <div class="card">
+      <div class="card-title">Overall risk assessment</div>
+      <div class="risk-header">
+        <span class="risk-label ${rCls}">${(d.risk.level || '').toUpperCase()}</span>
+        <div class="bar-track"><div class="bar-fill" style="width:${rPct}%;background:${rCol}"></div></div>
+        <span class="risk-score">${rPct}/100</span>
+        ${favorHtml}
+      </div>
+      <p style="font-size:13px;color:#6b7280;line-height:1.6">${d.risk.summary}</p>
+      <div style="margin-top:14px">${flagsHtml}</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Plain language summary</div>
+      <div class="summary-box">${d.plain_summary}</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Clause classification</div>
+      ${clauseHtml}
+    </div>
+
+    <div class="card">
+      <div class="card-title">Key obligations</div>
+      ${obHtml}
+    </div>
+
+    <div class="card">
+      <div class="card-title">Extracted entities</div>
+      <div class="ent-wrap">${entHtml}</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Document metrics</div>
+      <div class="metrics">
+        <div class="metric"><div class="metric-n" style="color:${rCol}">${rPct}</div><div class="metric-l">risk score</div></div>
+        <div class="metric"><div class="metric-n">${d.completeness_score || '—'}</div><div class="metric-l">completeness</div></div>
+        <div class="metric"><div class="metric-n">${(d.clauses || []).length}</div><div class="metric-l">clauses</div></div>
+        <div class="metric"><div class="metric-n">${(d.obligations || []).length}</div><div class="metric-l">obligations</div></div>
+        <div class="metric"><div class="metric-n">${(d.risk_flags || []).length}</div><div class="metric-l">risk flags</div></div>
+      </div>
+    </div>`;
+
+  document.getElementById('results').style.display = 'flex';
+}
+</script>
+</body>
+</html>

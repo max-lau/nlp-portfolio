@@ -1,7 +1,8 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
+from backend.demo1.database import init_db, save_analysis, query_analyses, get_stats
 import anthropic
 import os
 import json
@@ -18,13 +19,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Initialize database on startup
+init_db()
+
 client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
 class TextInput(BaseModel):
     text: str
 
 def clean_json(raw: str) -> str:
-    # Strip markdown code fences if present
     raw = raw.strip()
     raw = re.sub(r'^```json\s*', '', raw)
     raw = re.sub(r'^```\s*', '', raw)
@@ -38,7 +41,7 @@ def health():
 @app.post("/analyze")
 def analyze(body: TextInput):
     if not body.text or len(body.text.strip()) < 20:
-        raise HTTPException(status_code=400, detail="Text too short — need at least 20 characters")
+        raise HTTPException(status_code=400, detail="Text too short")
 
     prompt = f"""Analyze this text for NLP tasks.
 
@@ -77,13 +80,34 @@ Max 8 entities, max 10 keywords, max 3 tone items."""
             messages=[{"role": "user", "content": prompt}]
         )
         raw = message.content[0].text
-        print(f"\n--- RAW RESPONSE ---\n{raw}\n--- END ---\n")  # visible in terminal
+        print(f"\n--- RAW RESPONSE ---\n{raw}\n--- END ---\n")
         cleaned = clean_json(raw)
         parsed = json.loads(cleaned)
+
+        # Save to database
+        row_id = save_analysis(body.text, parsed)
+        parsed["id"] = row_id
+        print(f"Saved to DB with id: {row_id}")
+
         return parsed
     except json.JSONDecodeError as e:
         print(f"JSON ERROR: {e}\nRaw was: {raw}")
-        raise HTTPException(status_code=500, detail=f"JSON parse error: {str(e)} | Raw response: {raw[:300]}")
+        raise HTTPException(status_code=500, detail=f"JSON parse error: {str(e)}")
     except Exception as e:
         print(f"GENERAL ERROR: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/history")
+def history(
+    sentiment: str = Query(None, description="Filter by sentiment: positive, negative, neutral, mixed"),
+    keyword:   str = Query(None, description="Search keyword in text or keywords"),
+    limit:     int = Query(20,   description="Max results to return")
+):
+    """Query past analyses from the database."""
+    results = query_analyses(sentiment=sentiment, keyword=keyword, limit=limit)
+    return {"count": len(results), "results": results}
+
+@app.get("/stats")
+def stats():
+    """Aggregate statistics across all stored analyses."""
+    return get_stats()

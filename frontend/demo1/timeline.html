@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Timeline Extractor</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8f9fa; color: #1a1a1a; padding: 2rem; }
+    .container { max-width: 860px; margin: 0 auto; }
+    h1 { font-size: 26px; font-weight: 700; margin-bottom: 4px; }
+    .sub { color: #666; font-size: 14px; margin-bottom: 1rem; }
+    .badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; margin-right: 6px; }
+    .b1 { background: #fef3c7; color: #92400e; }
+    .b2 { background: #dbeafe; color: #1e40af; }
+    .b3 { background: #d1fae5; color: #065f46; }
+    textarea { width: 100%; min-height: 160px; padding: 14px; border: 1px solid #ddd; border-radius: 10px; font-size: 13px; line-height: 1.6; resize: vertical; margin-top: 1.25rem; background: #fff; font-family: inherit; }
+    textarea:focus { outline: none; border-color: #f59e0b; box-shadow: 0 0 0 3px rgba(245,158,11,0.1); }
+    .examples { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; align-items: center; }
+    .chip { font-size: 12px; padding: 5px 12px; border-radius: 20px; border: 1px solid #ddd; cursor: pointer; background: #fff; color: #555; transition: all 0.15s; }
+    .chip:hover { border-color: #f59e0b; color: #92400e; }
+    .btn-row { display: flex; gap: 10px; margin-top: 12px; align-items: center; }
+    .btn { padding: 10px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; border: 1px solid #ddd; background: #fff; transition: all 0.15s; }
+    .btn:hover { background: #f3f4f6; }
+    .btn.primary { background: #f59e0b; color: #fff; border-color: #f59e0b; }
+    .btn.primary:hover { background: #d97706; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .loader { display: none; align-items: center; gap: 10px; padding: 1rem 0; color: #666; font-size: 14px; }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: #f59e0b; animation: bounce 1.2s infinite; }
+    .dot:nth-child(2){animation-delay:0.2s} .dot:nth-child(3){animation-delay:0.4s}
+    @keyframes bounce{0%,80%,100%{transform:scale(0.6);opacity:0.4}40%{transform:scale(1);opacity:1}}
+    .error { background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px; padding: 12px 16px; font-size: 13px; color: #b91c1c; margin-top: 12px; display: none; }
+    .results { margin-top: 1.5rem; display: none; flex-direction: column; gap: 16px; }
+
+    /* Header card */
+    .header-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 1.25rem; }
+    .doc-title { font-size: 18px; font-weight: 700; color: #111827; margin-bottom: 8px; }
+    .meta-row { display: flex; gap: 20px; flex-wrap: wrap; margin-top: 8px; }
+    .meta-item { font-size: 13px; color: #6b7280; }
+    .meta-item span { font-weight: 600; color: #374151; }
+    .parties-wrap { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .party-chip { font-size: 12px; padding: 3px 10px; border-radius: 20px; background: #ede9fe; color: #5b21b6; font-weight: 500; }
+
+    /* Timeline */
+    .timeline-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 1.5rem; }
+    .timeline-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #9ca3af; margin-bottom: 1.25rem; }
+    .timeline { position: relative; padding-left: 32px; }
+    .timeline::before { content: ''; position: absolute; left: 10px; top: 0; bottom: 0; width: 2px; background: linear-gradient(to bottom, #f59e0b, #e5e7eb); border-radius: 2px; }
+    .event { position: relative; margin-bottom: 1.5rem; }
+    .event:last-child { margin-bottom: 0; }
+    .event-dot { position: absolute; left: -26px; top: 4px; width: 14px; height: 14px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 2px currentColor; }
+    .dot-high { color: #ef4444; background: #ef4444; }
+    .dot-medium { color: #f59e0b; background: #f59e0b; }
+    .dot-low { color: #9ca3af; background: #d1d5db; }
+    .event-date { font-size: 12px; font-weight: 700; color: #f59e0b; margin-bottom: 3px; letter-spacing: 0.03em; }
+    .event-text { font-size: 14px; color: #111827; font-weight: 500; line-height: 1.5; }
+    .event-meta { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; align-items: center; }
+    .cat-badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 20px; }
+    .cat-legal { background: #fee2e2; color: #991b1b; }
+    .cat-financial { background: #d1fae5; color: #065f46; }
+    .cat-operational { background: #dbeafe; color: #1e40af; }
+    .cat-communication { background: #ede9fe; color: #5b21b6; }
+    .cat-other { background: #f3f4f6; color: #374151; }
+    .event-amount { font-size: 12px; font-weight: 700; color: #059669; }
+    .event-parties { font-size: 12px; color: #9ca3af; }
+
+    /* Stats row */
+    .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
+    .stat { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px; text-align: center; }
+    .stat-n { font-size: 24px; font-weight: 700; color: #111827; }
+    .stat-l { font-size: 11px; color: #9ca3af; margin-top: 2px; }
+
+    /* Legend */
+    .legend { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; margin-bottom: 1rem; }
+    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #6b7280; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>Timeline extractor</h1>
+  <p class="sub">Automatically reconstruct chronological event sequences from any document</p>
+  <span class="badge b1">Timeline NLP</span>
+  <span class="badge b2">Event extraction</span>
+  <span class="badge b3">FastAPI + Claude</span>
+
+  <textarea id="txt" placeholder="Paste any document — legal complaint, case file, contract dispute, news article, incident report..."></textarea>
+
+  <div class="examples">
+    <span style="font-size:12px;color:#9ca3af">Examples:</span>
+    <span class="chip" onclick="setEx('fraud')">Fraud case</span>
+    <span class="chip" onclick="setEx('contract')">Contract dispute</span>
+    <span class="chip" onclick="setEx('corporate')">Corporate event</span>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn primary" id="btn" onclick="extract()">Extract timeline</button>
+    <button class="btn" onclick="clearAll()">Clear</button>
+    <span id="cc" style="font-size:12px;color:#9ca3af;margin-left:auto"></span>
+  </div>
+
+  <div class="loader" id="loader">
+    <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+    <span id="lmsg">Extracting events...</span>
+  </div>
+  <div class="error" id="err"></div>
+  <div class="results" id="results"></div>
+</div>
+
+<script>
+const API = 'http://localhost:8000';
+
+const EX = {
+  fraud: `SUPREME COURT OF THE STATE OF NEW YORK
+COUNTY OF NEW YORK
+THE PEOPLE OF THE STATE OF NEW YORK v. ALEXANDER VANCE
+CRIMINAL COMPLAINT — Case #: 2026NY000574 — Date Filed: February 15, 2026
+Charge: Grand Larceny in the Second Degree (PL 155.40)
+
+STATEMENT OF FACTS:
+On or about November 15, 2025, the Defendant knowingly accessed the email system of a partner firm of Citywide Venture Partners, LLC, using a deceptive email address. The Defendant sent fraudulent wiring instructions to Citywide's accounting department claiming a high-yield digital asset trading opportunity required immediate liquidity.
+
+Relying on these fraudulent representations, Citywide initiated a wire transfer on January 10, 2026, in the amount of $750,000 to a Chase Bank account under the name "AV Digital Holdings," controlled solely by the Defendant.
+
+On January 12, 2026, the Defendant transferred $700,000 of the stolen funds to a cryptocurrency exchange platform, converting the currency into Tether (USDT).
+
+The criminal complaint was filed on February 15, 2026 by Detective Sarah Jenkins of the NYPD Financial Crimes Unit.`,
+
+  contract: `CONTRACT DISPUTE SUMMARY — Matter No. 2025-CV-0892
+
+March 1, 2024: SkyBridge Technologies signed a 3-year SaaS agreement with DataVault Inc. for $180,000 per year.
+
+June 15, 2024: SkyBridge reported repeated system outages affecting operations. DataVault acknowledged the issues and promised resolution within 30 days.
+
+August 1, 2024: SkyBridge issued a formal breach notice after outages continued. DataVault failed to cure within the contractual 30-day window.
+
+October 10, 2024: SkyBridge terminated the agreement and demanded a refund of $135,000 representing 9 months of unused service.
+
+January 5, 2025: DataVault refused the refund claim, citing the no-refund clause in Section 8.3 of the agreement.
+
+March 15, 2025: SkyBridge filed suit in the Southern District of New York seeking damages of $135,000 plus attorney fees.`,
+
+  corporate: `MERGER TIMELINE — Apex Holdings acquisition of NovaTech Systems
+
+January 10, 2025: Apex Holdings board approved exploration of acquisition targets in the enterprise software space.
+
+February 28, 2025: Initial discussions began between Apex CEO Marcus Webb and NovaTech founder Lisa Park.
+
+April 15, 2025: Apex submitted a non-binding letter of intent valuing NovaTech at $320 million.
+
+May 1, 2025: Due diligence process commenced. NovaTech disclosed $12 million in undisclosed liabilities.
+
+June 20, 2025: Revised offer of $295 million submitted following due diligence findings.
+
+July 8, 2025: NovaTech board accepted the revised offer. Definitive merger agreement signed.
+
+September 1, 2025: HSR antitrust filing submitted to FTC and DOJ.
+
+November 15, 2025: Regulatory approval received from both agencies.
+
+December 1, 2025: Transaction closed. NovaTech shareholders received $18.50 per share.`
+};
+
+const lmsgs = ['Extracting events...','Building chronology...','Analyzing significance...','Rendering timeline...'];
+let mi = 0, mt = null;
+
+function setEx(k) {
+  document.getElementById('txt').value = EX[k];
+  document.getElementById('cc').textContent = EX[k].length + ' chars';
+}
+
+document.getElementById('txt').addEventListener('input', function() {
+  document.getElementById('cc').textContent = this.value.length ? this.value.length + ' chars' : '';
+});
+
+function clearAll() {
+  document.getElementById('txt').value = '';
+  document.getElementById('cc').textContent = '';
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('err').style.display = 'none';
+}
+
+async function extract() {
+  const text = document.getElementById('txt').value.trim();
+  if (!text || text.length < 20) { showErr('Please enter at least 20 characters.'); return; }
+
+  const btn = document.getElementById('btn');
+  btn.disabled = true;
+  document.getElementById('loader').style.display = 'flex';
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('err').style.display = 'none';
+
+  mi = 0;
+  document.getElementById('lmsg').textContent = lmsgs[0];
+  mt = setInterval(() => {
+    mi = (mi + 1) % lmsgs.length;
+    document.getElementById('lmsg').textContent = lmsgs[mi];
+  }, 1200);
+
+  try {
+    const resp = await fetch(`${API}/timeline`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.detail || resp.statusText);
+    render(data);
+  } catch(e) {
+    if (e.message.includes('fetch')) {
+      showErr('Cannot reach backend. Make sure server is running:\n  uvicorn backend.demo1.main:app --reload --port 8000');
+    } else {
+      showErr(e.message);
+    }
+  } finally {
+    btn.disabled = false;
+    clearInterval(mt);
+    document.getElementById('loader').style.display = 'none';
+  }
+}
+
+function showErr(msg) {
+  const d = document.getElementById('err');
+  d.textContent = 'Error: ' + msg;
+  d.style.display = 'block';
+}
+
+function catClass(c) {
+  return { legal:'cat-legal', financial:'cat-financial', operational:'cat-operational', communication:'cat-communication', other:'cat-other' }[c] || 'cat-other';
+}
+
+function dotClass(s) {
+  return { high:'dot-high', medium:'dot-medium', low:'dot-low' }[s] || 'dot-low';
+}
+
+function render(d) {
+  const events = d.events || [];
+  const high   = events.filter(e => e.significance === 'high').length;
+  const medium = events.filter(e => e.significance === 'medium').length;
+  const low    = events.filter(e => e.significance === 'low').length;
+
+  // Header
+  const partiesHtml = (d.key_parties || [])
+    .map(p => `<span class="party-chip">${p}</span>`).join('');
+
+  // Timeline events
+  const eventsHtml = events.map(e => {
+    const dc  = dotClass(e.significance);
+    const cat = catClass(e.category);
+    const partiesStr = (e.parties||[]).join(', ');
+    const amountHtml = e.amount && e.amount !== 'null' && e.amount !== null
+      ? `<span class="event-amount">${e.amount}</span>` : '';
+    const partiesHtml2 = partiesStr
+      ? `<span class="event-parties">${partiesStr}</span>` : '';
+
+    return `<div class="event">
+      <div class="event-dot ${dc}"></div>
+      <div class="event-date">${e.date}</div>
+      <div class="event-text">${e.event}</div>
+      <div class="event-meta">
+        <span class="cat-badge ${cat}">${e.category}</span>
+        ${amountHtml}
+        ${partiesHtml2}
+      </div>
+    </div>`;
+  }).join('');
+
+  // Date range
+  const rangeStr = d.date_range
+    ? `${d.date_range.start} → ${d.date_range.end}`
+    : '—';
+
+  document.getElementById('results').innerHTML = `
+    <div class="stats-row">
+      <div class="stat"><div class="stat-n">${events.length}</div><div class="stat-l">total events</div></div>
+      <div class="stat"><div class="stat-n" style="color:#ef4444">${high}</div><div class="stat-l">high significance</div></div>
+      <div class="stat"><div class="stat-n" style="color:#f59e0b">${medium}</div><div class="stat-l">medium</div></div>
+      <div class="stat"><div class="stat-n">${low}</div><div class="stat-l">low</div></div>
+      <div class="stat"><div class="stat-n" style="color:#059669;font-size:16px">${d.total_financial_impact || '—'}</div><div class="stat-l">total financial impact</div></div>
+    </div>
+
+    <div class="header-card">
+      <div class="doc-title">${d.title || 'Extracted Timeline'}</div>
+      <div class="meta-row">
+        <div class="meta-item">Date range: <span>${rangeStr}</span></div>
+        <div class="meta-item">Events: <span>${events.length}</span></div>
+        ${d.total_financial_impact ? `<div class="meta-item">Financial impact: <span style="color:#059669">${d.total_financial_impact}</span></div>` : ''}
+      </div>
+      <div class="parties-wrap">${partiesHtml}</div>
+    </div>
+
+    <div class="timeline-card">
+      <div class="timeline-title">Chronological event sequence</div>
+      <div class="legend">
+        <span class="legend-item"><span class="legend-dot" style="background:#ef4444"></span>High significance</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#f59e0b"></span>Medium</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#d1d5db"></span>Low</span>
+      </div>
+      <div class="timeline">${eventsHtml}</div>
+    </div>`;
+
+  document.getElementById('results').style.display = 'flex';
+}
+</script>
+</body>
+</html>

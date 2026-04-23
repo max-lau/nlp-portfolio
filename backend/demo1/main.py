@@ -19,7 +19,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize database on startup
 init_db()
 
 client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
@@ -83,31 +82,81 @@ Max 8 entities, max 10 keywords, max 3 tone items."""
         print(f"\n--- RAW RESPONSE ---\n{raw}\n--- END ---\n")
         cleaned = clean_json(raw)
         parsed = json.loads(cleaned)
-
-        # Save to database
         row_id = save_analysis(body.text, parsed)
         parsed["id"] = row_id
-        print(f"Saved to DB with id: {row_id}")
-
         return parsed
     except json.JSONDecodeError as e:
-        print(f"JSON ERROR: {e}\nRaw was: {raw}")
         raise HTTPException(status_code=500, detail=f"JSON parse error: {str(e)}")
     except Exception as e:
-        print(f"GENERAL ERROR: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/timeline")
+def timeline(body: TextInput):
+    if not body.text or len(body.text.strip()) < 20:
+        raise HTTPException(status_code=400, detail="Text too short")
+
+    prompt = f"""Extract a chronological timeline from this text.
+
+IMPORTANT: Your entire response must be ONLY a raw JSON object.
+Do NOT use markdown. Do NOT use backticks. Do NOT add any explanation.
+Start your response with {{ and end with }}
+
+Text: \"\"\"{body.text[:3000]}\"\"\"
+
+Return exactly this structure:
+{{
+  "title": "short descriptive title for this timeline",
+  "events": [
+    {{
+      "date": "exact date or period as written in text",
+      "date_normalized": "YYYY-MM-DD or YYYY-MM or YYYY (best estimate)",
+      "event": "plain English description of what happened",
+      "parties": ["person or org involved"],
+      "amount": "$X or null if no amount",
+      "significance": "high|medium|low",
+      "category": "legal|financial|operational|communication|other"
+    }}
+  ],
+  "date_range": {{
+    "start": "earliest date in YYYY-MM-DD",
+    "end": "latest date in YYYY-MM-DD"
+  }},
+  "key_parties": ["list of main people and organizations"],
+  "total_financial_impact": "total dollar amount if calculable, else null"
+}}
+
+Rules:
+- Extract ALL dates mentioned, in chronological order
+- significance: high = major event, medium = supporting event, low = background
+- category: legal=court/charges/filing, financial=money/transfers, operational=actions taken, communication=emails/messages
+- If exact date unknown, estimate from context
+- Max 20 events"""
+
+    try:
+        message = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=1500,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        raw = message.content[0].text
+        print(f"\n--- TIMELINE RAW ---\n{raw}\n--- END ---\n")
+        cleaned = clean_json(raw)
+        parsed = json.loads(cleaned)
+        return parsed
+    except json.JSONDecodeError as e:
+        raise HTTPException(status_code=500, detail=f"JSON parse error: {str(e)}")
+    except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/history")
 def history(
-    sentiment: str = Query(None, description="Filter by sentiment: positive, negative, neutral, mixed"),
-    keyword:   str = Query(None, description="Search keyword in text or keywords"),
-    limit:     int = Query(20,   description="Max results to return")
+    sentiment: str = Query(None),
+    keyword:   str = Query(None),
+    limit:     int = Query(20)
 ):
-    """Query past analyses from the database."""
     results = query_analyses(sentiment=sentiment, keyword=keyword, limit=limit)
     return {"count": len(results), "results": results}
 
 @app.get("/stats")
 def stats():
-    """Aggregate statistics across all stored analyses."""
     return get_stats()

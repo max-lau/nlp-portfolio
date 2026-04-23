@@ -12,15 +12,23 @@ focused on NLP model development, legal AI, and data pipeline architecture.
 
 \## Demos
 
-
-
 | Demo | Description | Port |
-
 |------|-------------|------|
+| [Demo 1 — NLP Text Analyzer](./frontend/demo1/index.html) | Sentiment analysis, named entity recognition, keyword extraction | 8000 |
+| [Demo 1 — Timeline Extractor](./frontend/demo1/timeline.html) | Chronological event extraction from legal and business documents | 8000 |
+| [Demo 2 — Legal Intelligence Engine](./frontend/demo2/index.html) | Clause classification, risk scoring, obligation extraction | 8001 |
 
-| \[Demo 1 — NLP Text Analyzer](./frontend/demo1/index.html) | Sentiment analysis, named entity recognition, keyword extraction | 8000 |
+## API Endpoints
 
-| \[Demo 2 — Legal Intelligence Engine](./frontend/demo2/index.html) | Clause classification, risk scoring, obligation extraction | 8001 |
+### Demo 1 (port 8000)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/health` | Health check |
+| POST | `/analyze` | Sentiment, entities, keywords — auto-saved to SQLite |
+| POST | `/timeline` | Extract chronological events from any document |
+| GET | `/history` | Query past analyses with filters |
+| GET | `/stats` | Aggregate statistics across all stored analyses |
 
 
 

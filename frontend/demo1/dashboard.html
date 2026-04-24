@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NLP Analytics Dashboard</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f1f5f9; color: #1a1a1a; }
+
+    /* Nav */
+    .nav { background: #0f172a; padding: 0 2rem; display: flex; align-items: center; gap: 1.5rem; height: 56px; }
+    .nav-brand { font-size: 15px; font-weight: 700; color: #fff; }
+    .nav-sub { font-size: 12px; color: #64748b; }
+    .nav-links { margin-left: auto; display: flex; gap: 8px; }
+    .nav-link { font-size: 12px; font-weight: 500; padding: 5px 12px; border-radius: 6px; color: #94a3b8; text-decoration: none; cursor: pointer; border: none; background: transparent; }
+    .nav-link:hover { background: #1e293b; color: #fff; }
+    .nav-link.active { background: #1e293b; color: #fff; }
+
+    /* Layout */
+    .page { padding: 1.5rem 2rem; max-width: 1100px; margin: 0 auto; }
+    .page-title { font-size: 22px; font-weight: 700; color: #0f172a; margin-bottom: 4px; }
+    .page-sub { font-size: 13px; color: #64748b; margin-bottom: 1.5rem; }
+
+    /* KPI row */
+    .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 1.5rem; }
+    .kpi { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.1rem 1.25rem; }
+    .kpi-n { font-size: 32px; font-weight: 700; color: #0f172a; line-height: 1; }
+    .kpi-l { font-size: 12px; color: #64748b; margin-top: 4px; }
+    .kpi-trend { font-size: 12px; font-weight: 600; margin-top: 6px; }
+    .trend-up { color: #059669; }
+    .trend-dn { color: #dc2626; }
+
+    /* Grid */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+    @media(max-width:700px){ .grid-2,.grid-3{ grid-template-columns:1fr; } }
+
+    /* Cards */
+    .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem; }
+    .card.full { grid-column: 1 / -1; }
+    .card-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #94a3b8; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; }
+    .chart-wrap { position: relative; height: 220px; }
+    .chart-wrap.tall { height: 280px; }
+
+    /* Sentiment pills */
+    .s-pill { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; text-transform: capitalize; }
+    .s-positive{background:#d1fae5;color:#065f46}
+    .s-negative{background:#fee2e2;color:#991b1b}
+    .s-neutral{background:#f3f4f6;color:#374151}
+    .s-mixed{background:#fef3c7;color:#92400e}
+
+    /* History table */
+    .filter-row { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+    .filter-select { font-size: 13px; padding: 6px 10px; border: 1px solid #e2e8f0; border-radius: 6px; background: #fff; color: #374151; }
+    .filter-input { font-size: 13px; padding: 6px 10px; border: 1px solid #e2e8f0; border-radius: 6px; background: #fff; color: #374151; flex: 1; min-width: 150px; }
+    .filter-btn { font-size: 13px; font-weight: 600; padding: 6px 14px; border-radius: 6px; border: 1px solid #3b82f6; background: #3b82f6; color: #fff; cursor: pointer; }
+    .filter-btn:hover { background: #2563eb; }
+    table { width: 100%; border-collapse: collapse; }
+    th { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #94a3b8; padding: 8px 12px; text-align: left; border-bottom: 1px solid #f1f5f9; }
+    td { font-size: 13px; padding: 10px 12px; border-bottom: 1px solid #f8fafc; color: #374151; vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #f8fafc; }
+    .kw-tag { display: inline-block; font-size: 11px; padding: 2px 7px; border-radius: 20px; background: #ede9fe; color: #5b21b6; margin: 2px; }
+    .ent-tag { display: inline-block; font-size: 11px; padding: 2px 7px; border-radius: 20px; background: #dbeafe; color: #1e40af; margin: 2px; }
+
+    /* Entity frequency bars */
+    .ent-list { display: flex; flex-direction: column; gap: 8px; }
+    .ent-row { display: flex; align-items: center; gap: 10px; }
+    .ent-name { font-size: 13px; font-weight: 500; min-width: 140px; color: #374151; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ent-bar-track { flex: 1; height: 8px; background: #f1f5f9; border-radius: 4px; overflow: hidden; }
+    .ent-bar-fill { height: 100%; border-radius: 4px; background: #6366f1; }
+    .ent-cnt { font-size: 12px; color: #94a3b8; min-width: 20px; text-align: right; }
+
+    /* Keyword cloud */
+    .kw-cloud { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .kw-word { padding: 4px 12px; border-radius: 20px; background: #f1f5f9; color: #374151; font-weight: 500; cursor: default; border: 1px solid #e2e8f0; transition: all 0.15s; }
+    .kw-word:hover { background: #ede9fe; color: #5b21b6; border-color: #c4b5fd; }
+    .kw-high { background: #ede9fe; color: #5b21b6; border-color: #c4b5fd; font-size: 18px; }
+    .kw-med  { font-size: 14px; }
+    .kw-low  { font-size: 12px; color: #94a3b8; }
+
+    /* Loading / empty */
+    .loading-msg { font-size: 14px; color: #94a3b8; text-align: center; padding: 2rem; }
+    .empty-msg { font-size: 13px; color: #94a3b8; text-align: center; padding: 1.5rem; }
+
+    /* Refresh btn */
+    .refresh-btn { font-size: 12px; padding: 4px 10px; border-radius: 6px; border: 1px solid #e2e8f0; background: #f8fafc; color: #64748b; cursor: pointer; }
+    .refresh-btn:hover { background: #f1f5f9; }
+  </style>
+</head>
+<body>
+
+<nav class="nav">
+  <span class="nav-brand">NLP Portfolio</span>
+  <span class="nav-sub">Analytics Dashboard</span>
+  <div class="nav-links">
+    <a class="nav-link" href="index.html">Text Analyzer</a>
+    <a class="nav-link" href="batch.html">Batch</a>
+    <a class="nav-link" href="timeline.html">Timeline</a>
+    <a class="nav-link active" href="dashboard.html">Dashboard</a>
+  </div>
+</nav>
+
+<div class="page">
+  <div class="page-title">Analytics dashboard</div>
+  <p class="page-sub">Real-time insights across all analyzed documents — powered by SQLite data pipeline</p>
+
+  <!-- KPI row -->
+  <div class="kpi-row" id="kpiRow">
+    <div class="kpi"><div class="kpi-n" id="kpiTotal">—</div><div class="kpi-l">total analyses</div></div>
+    <div class="kpi"><div class="kpi-n" id="kpiAvgScore">—</div><div class="kpi-l">avg sentiment score</div></div>
+    <div class="kpi"><div class="kpi-n" id="kpiAvgWords">—</div><div class="kpi-l">avg word count</div></div>
+    <div class="kpi"><div class="kpi-n" id="kpiTopSent">—</div><div class="kpi-l">dominant sentiment</div></div>
+  </div>
+
+  <!-- Row 1: sentiment donut + sentiment bar + timeline -->
+  <div class="grid-3" style="grid-template-columns:1fr 1fr 1.2fr">
+    <div class="card">
+      <div class="card-title">Sentiment distribution</div>
+      <div class="chart-wrap"><canvas id="chartDonut"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Sentiment scores</div>
+      <div class="chart-wrap"><canvas id="chartBar"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Analyses over time <button class="refresh-btn" onclick="loadAll()">↻ Refresh</button></div>
+      <div class="chart-wrap"><canvas id="chartLine"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Row 2: entity frequency + keyword cloud -->
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Top entities by frequency</div>
+      <div id="entList" class="ent-list"><div class="loading-msg">Loading...</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Keyword cloud</div>
+      <div id="kwCloud" class="kw-cloud" style="padding:0.5rem 0"><div class="loading-msg">Loading...</div></div>
+    </div>
+  </div>
+
+  <!-- Row 3: full history table -->
+  <div class="card full">
+    <div class="card-title">
+      Analysis history
+      <span id="histCount" style="font-size:11px;color:#94a3b8"></span>
+    </div>
+    <div class="filter-row">
+      <select class="filter-select" id="filterSent">
+        <option value="">All sentiments</option>
+        <option value="positive">Positive</option>
+        <option value="negative">Negative</option>
+        <option value="neutral">Neutral</option>
+        <option value="mixed">Mixed</option>
+      </select>
+      <input class="filter-input" id="filterKw" placeholder="Search keyword or text...">
+      <button class="filter-btn" onclick="loadHistory()">Search</button>
+    </div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Date</th>
+            <th>Preview</th>
+            <th>Words</th>
+            <th>Sentiment</th>
+            <th>Score</th>
+            <th>Entities</th>
+            <th>Keywords</th>
+          </tr>
+        </thead>
+        <tbody id="histBody"><tr><td colspan="8" class="loading-msg">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = 'http://localhost:8000';
+let donutChart = null, barChart = null, lineChart = null;
+
+const SENT_COLORS = {
+  positive: '#10b981',
+  negative: '#ef4444',
+  neutral:  '#9ca3af',
+  mixed:    '#f59e0b'
+};
+
+async function loadStats() {
+  try {
+    const resp = await fetch(`${API}/stats`);
+    const d = await resp.json();
+
+    // KPIs
+    document.getElementById('kpiTotal').textContent    = d.total_analyses || 0;
+    document.getElementById('kpiAvgScore').textContent = d.avg_sentiment_score || 0;
+    document.getElementById('kpiAvgWords').textContent = d.avg_word_count || 0;
+
+    const breakdown = d.sentiment_breakdown || {};
+    const topSent   = Object.entries(breakdown).sort((a,b)=>b[1]-a[1])[0];
+    document.getElementById('kpiTopSent').textContent  = topSent ? topSent[0] : '—';
+
+    // Donut chart
+    const sentLabels = Object.keys(breakdown);
+    const sentValues = Object.values(breakdown);
+    const sentColors = sentLabels.map(l => SENT_COLORS[l] || '#e5e7eb');
+
+    if (donutChart) donutChart.destroy();
+    donutChart = new Chart(document.getElementById('chartDonut'), {
+      type: 'doughnut',
+      data: {
+        labels: sentLabels,
+        datasets: [{ data: sentValues, backgroundColor: sentColors, borderWidth: 2, borderColor: '#fff' }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 12 } }
+        }
+      }
+    });
+
+    // Bar chart — sentiment counts
+    if (barChart) barChart.destroy();
+    barChart = new Chart(document.getElementById('chartBar'), {
+      type: 'bar',
+      data: {
+        labels: sentLabels,
+        datasets: [{
+          label: 'Count',
+          data: sentValues,
+          backgroundColor: sentColors,
+          borderRadius: 6,
+          borderSkipped: false
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 11 } }, grid: { color: '#f1f5f9' } },
+          x: { ticks: { font: { size: 11 } }, grid: { display: false } }
+        }
+      }
+    });
+
+  } catch(e) {
+    console.error('Stats error:', e);
+  }
+}
+
+async function loadHistory() {
+  const sentiment = document.getElementById('filterSent').value;
+  const keyword   = document.getElementById('filterKw').value;
+
+  let url = `${API}/history?limit=50`;
+  if (sentiment) url += `&sentiment=${sentiment}`;
+  if (keyword)   url += `&keyword=${encodeURIComponent(keyword)}`;
+
+  try {
+    const resp = await fetch(url);
+    const d    = await resp.json();
+    const rows = d.results || [];
+
+    document.getElementById('histCount').textContent = `${rows.length} records`;
+
+    // Timeline chart — analyses per day
+    const byDay = {};
+    rows.forEach(r => {
+      const day = r.created_at.substring(0, 10);
+      byDay[day] = (byDay[day] || 0) + 1;
+    });
+    const days   = Object.keys(byDay).sort();
+    const counts = days.map(d => byDay[d]);
+
+    if (lineChart) lineChart.destroy();
+    lineChart = new Chart(document.getElementById('chartLine'), {
+      type: 'line',
+      data: {
+        labels: days,
+        datasets: [{
+          label: 'Analyses',
+          data: counts,
+          borderColor: '#6366f1',
+          backgroundColor: 'rgba(99,102,241,0.08)',
+          borderWidth: 2,
+          pointRadius: 4,
+          pointBackgroundColor: '#6366f1',
+          fill: true,
+          tension: 0.4
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 10 } }, grid: { color: '#f1f5f9' } },
+          x: { ticks: { font: { size: 10 }, maxRotation: 30 }, grid: { display: false } }
+        }
+      }
+    });
+
+    // Entity frequency
+    const entFreq = {};
+    rows.forEach(r => {
+      (r.entities || []).forEach(e => {
+        const key = e.text;
+        entFreq[key] = (entFreq[key] || 0) + 1;
+      });
+    });
+    const topEnts = Object.entries(entFreq).sort((a,b)=>b[1]-a[1]).slice(0, 10);
+    const maxEnt  = topEnts[0]?.[1] || 1;
+
+    document.getElementById('entList').innerHTML = topEnts.length
+      ? topEnts.map(([name, cnt]) => `
+          <div class="ent-row">
+            <span class="ent-name" title="${name}">${name}</span>
+            <div class="ent-bar-track">
+              <div class="ent-bar-fill" style="width:${Math.round(cnt/maxEnt*100)}%"></div>
+            </div>
+            <span class="ent-cnt">${cnt}</span>
+          </div>`).join('')
+      : '<div class="empty-msg">No entities yet — run some analyses first</div>';
+
+    // Keyword cloud
+    const kwFreq = {};
+    rows.forEach(r => {
+      (r.keywords || []).forEach(k => {
+        kwFreq[k.word] = (kwFreq[k.word] || 0) + 1;
+      });
+    });
+    const topKws = Object.entries(kwFreq).sort((a,b)=>b[1]-a[1]).slice(0, 30);
+    const maxKw  = topKws[0]?.[1] || 1;
+
+    document.getElementById('kwCloud').innerHTML = topKws.length
+      ? topKws.map(([word, cnt]) => {
+          const ratio = cnt / maxKw;
+          const cls   = ratio > 0.6 ? 'kw-high' : ratio > 0.3 ? 'kw-med' : 'kw-low';
+          return `<span class="kw-word ${cls}" title="${cnt} occurrences">${word}</span>`;
+        }).join('')
+      : '<div class="empty-msg">No keywords yet</div>';
+
+    // History table
+    document.getElementById('histBody').innerHTML = rows.length
+      ? rows.map(r => {
+          const date = r.created_at.substring(0, 16).replace('T', ' ');
+          const ents = (r.entities || []).slice(0, 3).map(e =>
+            `<span class="ent-tag">${e.text}</span>`).join('');
+          const kws  = (r.keywords || []).slice(0, 3).map(k =>
+            `<span class="kw-tag">${k.word}</span>`).join('');
+          const score = Math.round((r.score || 0) * 100);
+          return `<tr>
+            <td style="color:#94a3b8;font-weight:600">${r.id}</td>
+            <td style="white-space:nowrap;color:#64748b;font-size:12px">${date}</td>
+            <td style="max-width:180px;font-size:12px;color:#64748b">${r.text}</td>
+            <td style="text-align:center">${r.word_count}</td>
+            <td><span class="s-pill s-${r.sentiment}">${r.sentiment}</span></td>
+            <td>
+              <div style="font-size:12px;font-weight:600">${score}%</div>
+              <div style="height:4px;background:#f1f5f9;border-radius:2px;margin-top:3px;overflow:hidden">
+                <div style="height:100%;width:${score}%;background:${SENT_COLORS[r.sentiment]||'#9ca3af'};border-radius:2px"></div>
+              </div>
+            </td>
+            <td>${ents || '<span style="color:#94a3b8;font-size:12px">—</span>'}</td>
+            <td>${kws  || '<span style="color:#94a3b8;font-size:12px">—</span>'}</td>
+          </tr>`;
+        }).join('')
+      : '<tr><td colspan="8" class="empty-msg">No analyses found. Run some analyses first.</td></tr>';
+
+  } catch(e) {
+    console.error('History error:', e);
+    document.getElementById('histBody').innerHTML =
+      '<tr><td colspan="8" class="empty-msg">Could not load history — is the server running?</td></tr>';
+  }
+}
+
+async function loadAll() {
+  await Promise.all([loadStats(), loadHistory()]);
+}
+
+loadAll();
+</script>
+</body>
+</html>

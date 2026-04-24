@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Criminal Complaint Risk Scorer</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8f9fa; color: #1a1a1a; padding: 2rem; }
+    .container { max-width: 860px; margin: 0 auto; }
+    h1 { font-size: 26px; font-weight: 700; margin-bottom: 4px; }
+    .sub { color: #666; font-size: 14px; margin-bottom: 1rem; }
+    .badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; margin-right: 6px; }
+    .b1{background:#fee2e2;color:#991b1b}
+    .b2{background:#fef3c7;color:#92400e}
+    .b3{background:#dbeafe;color:#1e40af}
+    textarea { width: 100%; min-height: 160px; padding: 14px; border: 1px solid #ddd; border-radius: 10px; font-size: 13px; font-family: 'Courier New', monospace; line-height: 1.6; resize: vertical; margin-top: 1.25rem; background: #fff; }
+    textarea:focus { outline: none; border-color: #dc2626; box-shadow: 0 0 0 3px rgba(220,38,38,0.1); }
+    .chip { font-size: 12px; padding: 5px 12px; border-radius: 20px; border: 1px solid #ddd; cursor: pointer; background: #fff; color: #555; display: inline-block; margin: 3px 4px 3px 0; }
+    .chip:hover { border-color: #dc2626; color: #dc2626; }
+    .btn-row { display: flex; gap: 10px; margin-top: 12px; }
+    .btn { padding: 10px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; border: 1px solid #ddd; background: #fff; }
+    .btn.primary { background: #dc2626; color: #fff; border-color: #dc2626; }
+    .btn.primary:hover { background: #b91c1c; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .loader { display: none; align-items: center; gap: 10px; padding: 1rem 0; color: #666; font-size: 14px; }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: #dc2626; animation: bounce 1.2s infinite; }
+    .dot:nth-child(2){animation-delay:0.2s} .dot:nth-child(3){animation-delay:0.4s}
+    @keyframes bounce{0%,80%,100%{transform:scale(0.6);opacity:0.4}40%{transform:scale(1);opacity:1}}
+    .error { background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px; padding: 12px 16px; font-size: 13px; color: #b91c1c; margin-top: 12px; display: none; word-break: break-word; }
+    .results { margin-top: 1.5rem; display: none; flex-direction: column; gap: 14px; }
+    .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 1.25rem; }
+    .card-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #9ca3af; margin-bottom: 12px; }
+
+    /* Risk meter */
+    .risk-hero { display: flex; align-items: center; gap: 16px; margin-bottom: 14px; flex-wrap: wrap; }
+    .risk-score-circle { width: 80px; height: 80px; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0; border: 4px solid; }
+    .risk-score-n { font-size: 24px; font-weight: 800; line-height: 1; }
+    .risk-score-l { font-size: 10px; font-weight: 600; opacity: 0.7; }
+    .risk-info { flex: 1; }
+    .risk-level { font-size: 20px; font-weight: 700; text-transform: uppercase; margin-bottom: 4px; }
+    .risk-summary { font-size: 13px; color: #6b7280; line-height: 1.6; }
+    .risk-low    { color: #16a34a; border-color: #16a34a; background: #f0fdf4; }
+    .risk-medium { color: #d97706; border-color: #d97706; background: #fffbeb; }
+    .risk-high   { color: #dc2626; border-color: #dc2626; background: #fef2f2; }
+    .risk-critical { color: #7f1d1d; border-color: #7f1d1d; background: #fef2f2; }
+    .prose-strength { font-size: 13px; font-weight: 600; padding: 4px 12px; border-radius: 20px; display: inline-block; margin-top: 6px; }
+    .ps-weak         { background: #d1fae5; color: #065f46; }
+    .ps-moderate     { background: #fef3c7; color: #92400e; }
+    .ps-strong       { background: #fee2e2; color: #991b1b; }
+    .ps-overwhelming { background: #7f1d1d; color: #fff; }
+
+    /* Charges table */
+    table { width: 100%; border-collapse: collapse; }
+    th { font-size: 11px; font-weight: 700; text-transform: uppercase; color: #9ca3af; padding: 8px 10px; text-align: left; border-bottom: 1px solid #f3f4f6; }
+    td { font-size: 13px; padding: 10px; border-bottom: 1px solid #f8f8f8; vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    .felony-pill { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
+    .fA{background:#7f1d1d;color:#fff} .fB{background:#991b1b;color:#fff}
+    .fC{background:#dc2626;color:#fff} .fD{background:#f87171;color:#fff}
+    .fE{background:#fca5a5;color:#991b1b} .fm{background:#fef3c7;color:#92400e}
+    .fv{background:#f3f4f6;color:#374151}
+    .sev-bar { height: 6px; background: #f3f4f6; border-radius: 3px; margin-top: 4px; overflow: hidden; }
+    .sev-fill { height: 100%; border-radius: 3px; }
+
+    /* Sentencing */
+    .sent-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-bottom: 12px; }
+    .sent-box { background: #f9fafb; border-radius: 8px; padding: 12px; text-align: center; border: 1px solid #f3f4f6; }
+    .sent-n { font-size: 22px; font-weight: 700; color: #dc2626; }
+    .sent-l { font-size: 11px; color: #9ca3af; margin-top: 2px; }
+    .factor-list { display: flex; flex-direction: column; gap: 6px; }
+    .factor-row { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; padding: 6px 8px; border-radius: 6px; }
+    .factor-agg { background: #fef2f2; }
+    .factor-mit { background: #f0fdf4; }
+    .factor-tag { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 10px; white-space: nowrap; margin-top: 1px; flex-shrink: 0; }
+    .tag-agg { background: #fee2e2; color: #991b1b; }
+    .tag-mit { background: #d1fae5; color: #065f46; }
+
+    /* Evidence */
+    .ev-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .ev-strength { font-size: 14px; font-weight: 700; padding: 4px 14px; border-radius: 20px; }
+    .ev-types { display: flex; flex-wrap: wrap; gap: 6px; }
+    .ev-type { font-size: 12px; padding: 3px 10px; border-radius: 20px; background: #dbeafe; color: #1e40af; font-weight: 500; }
+    .ev-items { margin-top: 10px; display: flex; flex-direction: column; gap: 4px; }
+    .ev-item { font-size: 13px; color: #374151; padding: 4px 0; border-bottom: 1px solid #f3f4f6; }
+    .ev-item:last-child { border-bottom: none; }
+    .ev-item::before { content: '▸ '; color: #9ca3af; }
+
+    /* Defense */
+    .def-list { display: flex; flex-direction: column; gap: 6px; }
+    .def-item { font-size: 13px; color: #374151; padding: 8px 12px; background: #fffbeb; border-radius: 6px; border-left: 3px solid #f59e0b; line-height: 1.5; }
+    .def-item::before { content: '⚖ '; }
+
+    /* Summary box */
+    .summary-box { font-size: 14px; line-height: 1.8; color: #374151; padding: 14px 16px; background: #fef2f2; border-radius: 8px; border-left: 4px solid #dc2626; }
+
+    /* Case overview */
+    .overview-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+    .overview-item { background: #f9fafb; border-radius: 8px; padding: 10px 12px; }
+    .overview-label { font-size: 11px; color: #9ca3af; font-weight: 600; margin-bottom: 3px; }
+    .overview-value { font-size: 13px; font-weight: 600; color: #111827; }
+
+    /* Financial */
+    .fin-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+    .fin-box { background: #f9fafb; border-radius: 8px; padding: 12px; }
+    .fin-label { font-size: 11px; color: #9ca3af; font-weight: 600; margin-bottom: 4px; }
+    .fin-value { font-size: 15px; font-weight: 700; color: #059669; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>Criminal complaint risk scorer</h1>
+  <p class="sub">AI-powered charge severity analysis, sentencing exposure, and prosecution strength assessment</p>
+  <span class="badge b1">Criminal NLP</span>
+  <span class="badge b2">Risk Scoring</span>
+  <span class="badge b3">Sentencing Analysis</span>
+
+  <textarea id="txt" placeholder="Paste criminal complaint, indictment, or charging document here..."></textarea>
+
+  <div style="margin-top:8px">
+    <span style="font-size:12px;color:#9ca3af">Load sample:</span>
+    <span class="chip" onclick="loadEx('fraud')">Fraud complaint</span>
+    <span class="chip" onclick="loadEx('assault')">Assault case</span>
+    <span class="chip" onclick="loadEx('drug')">Drug trafficking</span>
+    <span class="chip" onclick="loadEx('cyber')">Cybercrime</span>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn primary" id="btn" onclick="score()">Score complaint</button>
+    <button class="btn" onclick="document.getElementById('txt').value='';document.getElementById('results').style.display='none'">Clear</button>
+  </div>
+
+  <div class="loader" id="loader">
+    <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+    <span id="lmsg">Analyzing charges...</span>
+  </div>
+  <div class="error" id="err"></div>
+  <div class="results" id="results"></div>
+</div>
+
+<script>
+const API = 'http://localhost:8001';
+
+const EX = {
+  fraud: `SUPREME COURT OF THE STATE OF NEW YORK
+COUNTY OF NEW YORK
+THE PEOPLE OF THE STATE OF NEW YORK v. ALEXANDER VANCE
+CRIMINAL COMPLAINT — Case #: 2026NY000574 — Date Filed: February 15, 2026
+Charge: Grand Larceny in the Second Degree (PL 155.40) — Felony Class: C
+
+On or about November 15, 2025, the Defendant knowingly accessed the email system of Citywide Venture Partners, LLC using a deceptive email address and sent fraudulent wiring instructions claiming a high-yield digital asset trading opportunity.
+
+On January 10, 2026, Citywide initiated a wire transfer of $750,000 to a Chase Bank account under the name AV Digital Holdings controlled by the Defendant. On January 12, 2026, the Defendant transferred $700,000 to a cryptocurrency exchange and converted funds to Tether (USDT) to avoid tracing.
+
+The criminal complaint was filed on February 15, 2026 by Detective Sarah Jenkins of the NYPD Financial Crimes Unit.`,
+
+  assault: `CRIMINAL COURT OF THE CITY OF NEW YORK
+COUNTY OF BRONX
+THE PEOPLE OF THE STATE OF NEW YORK v. MARCUS RIVERS
+Case #: 2026BX001234 — Date Filed: March 10, 2026
+Charges: Assault in the First Degree (PL 120.10) Felony Class A, Criminal Possession of a Weapon (PL 265.02) Felony Class D
+
+On March 8, 2026, at approximately 11:45 PM, the Defendant Marcus Rivers, with intent to cause serious physical injury, struck victim James Morales with a metal pipe causing a fractured skull and traumatic brain injury requiring emergency surgery. The Defendant was found at the scene in possession of an illegal switchblade knife. Two eyewitnesses identified the Defendant. Security camera footage captured the incident. The victim remains hospitalized in critical condition.`,
+
+  drug: `UNITED STATES DISTRICT COURT
+SOUTHERN DISTRICT OF NEW YORK
+UNITED STATES v. CARLOS MENDEZ
+Case #: 1:2026cr00412 — Date Filed: April 1, 2026
+Count 1: Drug Trafficking (21 USC 841) — Maximum: 40 years
+Count 2: Conspiracy to Distribute (21 USC 846) — Maximum: 40 years
+Count 3: Money Laundering (18 USC 1956) — Maximum: 20 years
+
+On March 28, 2026, federal agents executed a search warrant at defendant's residence and seized 2.5 kilograms of cocaine with an estimated street value of $250,000, $180,000 in cash, and financial records showing wire transfers to accounts in Colombia. DEA wiretap recordings captured defendant coordinating multiple drug shipments. Two confidential informants have agreed to testify.`,
+
+  cyber: `UNITED STATES DISTRICT COURT
+EASTERN DISTRICT OF NEW YORK
+UNITED STATES v. KEVIN ZHAO
+Case #: 1:2026cr00891 — Date Filed: April 10, 2026
+Count 1: Computer Fraud and Abuse (18 USC 1030) — Maximum: 10 years
+Count 2: Wire Fraud (18 USC 1343) — Maximum: 20 years
+Count 3: Identity Theft (18 USC 1028A) — Maximum: 2 years consecutive
+
+Between January 2025 and March 2026, the Defendant gained unauthorized access to financial systems of 14 companies, exfiltrating personal data of approximately 2.3 million customers. Defendant used stolen identities to open fraudulent credit accounts totaling $4.2 million in losses. Digital forensics traced the intrusions to IP addresses registered to the Defendant. Defendant's laptop contained hacking tools and databases of stolen credentials.`
+};
+
+const lmsgs = ['Analyzing charges...','Assessing prosecution strength...','Calculating sentencing exposure...','Building risk profile...'];
+let mi = 0, mt = null;
+
+function loadEx(k) {
+  document.getElementById('txt').value = EX[k];
+}
+
+async function score() {
+  const text = document.getElementById('txt').value.trim();
+  if (!text || text.length < 50) { showErr('Please enter at least 50 characters.'); return; }
+
+  const btn = document.getElementById('btn');
+  btn.disabled = true;
+  document.getElementById('loader').style.display = 'flex';
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('err').style.display = 'none';
+
+  mi = 0;
+  document.getElementById('lmsg').textContent = lmsgs[0];
+  mt = setInterval(() => {
+    mi = (mi+1) % lmsgs.length;
+    document.getElementById('lmsg').textContent = lmsgs[mi];
+  }, 1500);
+
+  try {
+    const resp = await fetch(`${API}/criminal/score`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.detail || resp.statusText);
+    render(data);
+  } catch(e) {
+    showErr(e.message.includes('fetch')
+      ? 'Cannot reach backend. Make sure server is running on port 8001.'
+      : e.message);
+  } finally {
+    btn.disabled = false;
+    clearInterval(mt);
+    document.getElementById('loader').style.display = 'none';
+  }
+}
+
+function showErr(msg) {
+  const d = document.getElementById('err');
+  d.textContent = 'Error: ' + msg;
+  d.style.display = 'block';
+}
+
+function riskColor(l) {
+  return {low:'#16a34a',medium:'#d97706',high:'#dc2626',critical:'#7f1d1d'}[l]||'#9ca3af';
+}
+
+function felonyClass(fc) {
+  const map = {'A':'fA','B':'fB','C':'fC','D':'fD','E':'fE','misdemeanor':'fm','violation':'fv'};
+  return map[fc] || 'fv';
+}
+
+function render(d) {
+  const ra   = d.risk_assessment || {};
+  const sent = d.sentencing_exposure || {};
+  const fin  = d.financial || {};
+  const ev   = d.evidence || {};
+  const def  = d.defendant || {};
+  const co   = d.case_overview || {};
+  const rCol = riskColor(ra.level);
+  const rCls = 'risk-' + (ra.level || 'medium');
+
+  // Prosecution strength
+  const psMap = {weak:'ps-weak',moderate:'ps-moderate',strong:'ps-strong',overwhelming:'ps-overwhelming'};
+  const psCls = psMap[ra.prosecution_strength] || 'ps-moderate';
+
+  // Charges table
+  const chargesHtml = (d.charges || []).map(c => {
+    const fc  = felonyClass(c.felony_class);
+    const sev = c.severity_score || 0;
+    const col = sev > 75 ? '#dc2626' : sev > 50 ? '#f59e0b' : '#10b981';
+    return `<tr>
+      <td style="font-weight:700;color:#374151">Count ${c.count}</td>
+      <td>
+        <div style="font-weight:600;font-size:13px">${c.charge}</div>
+        <div style="font-size:11px;color:#9ca3af;margin-top:2px">${c.statute||''}</div>
+      </td>
+      <td><span class="felony-pill ${fc}">${c.felony_class}</span></td>
+      <td style="text-align:center;font-weight:700">${c.max_sentence_years || '?'}y</td>
+      <td style="min-width:80px">
+        <div style="font-size:12px;font-weight:600;color:${col}">${sev}/100</div>
+        <div class="sev-bar"><div class="sev-fill" style="width:${sev}%;background:${col}"></div></div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  // Factors
+  const factorsHtml = (ra.factors || []).map(f => {
+    const cls = f.impact === 'aggravating' ? 'factor-agg' : 'factor-mit';
+    const tag = f.impact === 'aggravating' ? 'tag-agg' : 'tag-mit';
+    return `<div class="factor-row ${cls}">
+      <span class="factor-tag ${tag}">${f.impact}</span>
+      <div><strong>${f.factor}</strong> — ${f.description}</div>
+    </div>`;
+  }).join('');
+
+  // Evidence types
+  const evTypesHtml = (ev.types || []).map(t =>
+    `<span class="ev-type">${t}</span>`).join('');
+  const evItemsHtml = (ev.key_evidence || []).map(e =>
+    `<div class="ev-item">${e}</div>`).join('');
+
+  // Defense
+  const defHtml = (d.defense_vulnerabilities || []).map(v =>
+    `<div class="def-item">${v}</div>`).join('');
+
+  // Sentencing factors
+  const sentIncHtml = (sent.factors_that_increase || []).map(f =>
+    `<div style="font-size:12px;color:#dc2626;padding:2px 0">▲ ${f}</div>`).join('');
+  const sentDecHtml = (sent.factors_that_decrease || []).map(f =>
+    `<div style="font-size:12px;color:#059669;padding:2px 0">▼ ${f}</div>`).join('');
+
+  document.getElementById('results').innerHTML = `
+
+    <div class="card">
+      <div class="card-title">Overall risk assessment</div>
+      <div class="risk-hero">
+        <div class="risk-score-circle ${rCls}">
+          <div class="risk-score-n">${ra.overall_score || 0}</div>
+          <div class="risk-score-l">/ 100</div>
+        </div>
+        <div class="risk-info">
+          <div class="risk-level" style="color:${rCol}">${(ra.level||'').toUpperCase()}</div>
+          <div class="risk-summary">${ra.summary || d.plain_summary || ''}</div>
+          <span class="prose-strength ${psCls}">Prosecution: ${ra.prosecution_strength || '—'}</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <div style="background:#f9fafb;border-radius:8px;padding:8px 14px;font-size:13px">
+          <span style="color:#9ca3af">Charges: </span><strong>${d.charge_count || 0}</strong>
+        </div>
+        <div style="background:#f9fafb;border-radius:8px;padding:8px 14px;font-size:13px">
+          <span style="color:#9ca3af">Max severity: </span><strong style="color:#dc2626">${d.max_severity || 0}/100</strong>
+        </div>
+        <div style="background:#f9fafb;border-radius:8px;padding:8px 14px;font-size:13px">
+          <span style="color:#9ca3af">Total max exposure: </span><strong style="color:#dc2626">${d.total_max_years || 0} years</strong>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Plain language summary</div>
+      <div class="summary-box">${d.plain_summary || '—'}</div>
+      ${d.similar_cases_outcome ? `<p style="font-size:13px;color:#6b7280;margin-top:10px;font-style:italic">📊 Typical outcome: ${d.similar_cases_outcome}</p>` : ''}
+    </div>
+
+    <div class="card">
+      <div class="card-title">Case overview</div>
+      <div class="overview-grid">
+        <div class="overview-item"><div class="overview-label">Case number</div><div class="overview-value">${co.case_number || '—'}</div></div>
+        <div class="overview-item"><div class="overview-label">Court</div><div class="overview-value">${co.court || '—'}</div></div>
+        <div class="overview-item"><div class="overview-label">Date filed</div><div class="overview-value">${co.date_filed || '—'}</div></div>
+        <div class="overview-item"><div class="overview-label">Defendant</div><div class="overview-value">${def.name || '—'}</div></div>
+        <div class="overview-item"><div class="overview-label">Document type</div><div class="overview-value">${co.document_type || '—'}</div></div>
+        <div class="overview-item"><div class="overview-label">Jurisdiction</div><div class="overview-value">${co.jurisdiction || '—'}</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Charges & severity</div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Count</th><th>Charge</th><th>Class</th><th>Max</th><th>Severity</th>
+            </tr>
+          </thead>
+          <tbody>${chargesHtml}</tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Sentencing exposure</div>
+      <div class="sent-grid">
+        <div class="sent-box"><div class="sent-n">${sent.min_years || 0}y</div><div class="sent-l">minimum</div></div>
+        <div class="sent-box"><div class="sent-n">${sent.max_years || 0}y</div><div class="sent-l">maximum</div></div>
+        <div class="sent-box"><div class="sent-n" style="font-size:16px">${sent.likely_range || '—'}</div><div class="sent-l">likely range</div></div>
+      </div>
+      <p style="font-size:13px;color:#6b7280;margin-bottom:12px;line-height:1.6">${sent.notes || ''}</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div><div style="font-size:11px;font-weight:700;color:#dc2626;margin-bottom:6px">AGGRAVATING FACTORS</div>${sentIncHtml}</div>
+        <div><div style="font-size:11px;font-weight:700;color:#059669;margin-bottom:6px">MITIGATING FACTORS</div>${sentDecHtml}</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Risk factors</div>
+      <div class="factor-list">${factorsHtml || '<div style="color:#9ca3af;font-size:13px">No factors extracted</div>'}</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Evidence assessment</div>
+      <div class="ev-row">
+        <span class="ev-strength ${psMap[ev.strength]||'ps-moderate'}">${ev.strength || '—'}</span>
+        <div class="ev-types">${evTypesHtml}</div>
+      </div>
+      <div class="ev-items">${evItemsHtml}</div>
+    </div>
+
+    ${fin.amount_stolen ? `
+    <div class="card">
+      <div class="card-title">Financial impact</div>
+      <div class="fin-grid">
+        <div class="fin-box"><div class="fin-label">Amount stolen</div><div class="fin-value">${fin.amount_stolen}</div></div>
+        <div class="fin-box"><div class="fin-label">Restitution likely</div><div class="fin-value" style="color:${fin.restitution_likely?'#dc2626':'#059669'}">${fin.restitution_likely?'Yes':'No'}</div></div>
+        ${fin.fine_exposure ? `<div class="fin-box"><div class="fin-label">Fine exposure</div><div class="fin-value" style="font-size:13px">${fin.fine_exposure}</div></div>` : ''}
+      </div>
+      ${(fin.assets_mentioned||[]).length ? `<div style="margin-top:10px;font-size:13px;color:#6b7280">Assets: ${fin.assets_mentioned.join(', ')}</div>` : ''}
+    </div>` : ''}
+
+    <div class="card">
+      <div class="card-title">Potential defense arguments</div>
+      <div class="def-list">${defHtml || '<div style="color:#9ca3af;font-size:13px">None identified</div>'}</div>
+    </div>`;
+
+  document.getElementById('results').style.display = 'flex';
+}
+</script>
+</body>
+</html>

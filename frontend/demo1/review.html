@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Active Learning — Review Queue</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f1f5f9; color: #1a1a1a; }
+    .nav { background: #0f172a; padding: 0 2rem; display: flex; align-items: center; gap: 1.5rem; height: 56px; }
+    .nav-brand { font-size: 15px; font-weight: 700; color: #fff; }
+    .nav-sub { font-size: 12px; color: #64748b; }
+    .nav-links { margin-left: auto; display: flex; gap: 8px; }
+    .nav-link { font-size: 12px; font-weight: 500; padding: 5px 12px; border-radius: 6px; color: #94a3b8; cursor: pointer; border: none; background: transparent; text-decoration: none; }
+    .nav-link:hover { background: #1e293b; color: #fff; }
+    .nav-link.active { background: #1e293b; color: #fff; }
+    .page { padding: 1.5rem 2rem; max-width: 960px; margin: 0 auto; }
+    .page-title { font-size: 22px; font-weight: 700; color: #0f172a; margin-bottom: 4px; }
+    .page-sub { font-size: 13px; color: #64748b; margin-bottom: 1.5rem; }
+
+    /* KPI row */
+    .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 1.5rem; }
+    .kpi { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1rem 1.25rem; }
+    .kpi-n { font-size: 32px; font-weight: 700; color: #0f172a; }
+    .kpi-l { font-size: 12px; color: #64748b; margin-top: 4px; }
+
+    /* How it works */
+    .how-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem; margin-bottom: 1.5rem; }
+    .how-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #94a3b8; margin-bottom: 12px; }
+    .steps { display: flex; gap: 0; }
+    .step { flex: 1; text-align: center; padding: 0 12px; position: relative; }
+    .step::after { content: '→'; position: absolute; right: -8px; top: 12px; color: #cbd5e1; font-size: 16px; }
+    .step:last-child::after { display: none; }
+    .step-num { width: 32px; height: 32px; border-radius: 50%; background: #6366f1; color: #fff; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px; }
+    .step-title { font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 3px; }
+    .step-desc { font-size: 11px; color: #94a3b8; line-height: 1.4; }
+
+    /* Queue */
+    .queue-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+    .queue-title { font-size: 16px; font-weight: 700; color: #0f172a; }
+    .refresh-btn { font-size: 12px; padding: 6px 14px; border-radius: 6px; border: 1px solid #e2e8f0; background: #fff; color: #64748b; cursor: pointer; }
+    .refresh-btn:hover { background: #f8fafc; }
+
+    .queue-empty { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 3rem; text-align: center; color: #94a3b8; font-size: 14px; }
+    .queue-empty .icon { font-size: 36px; margin-bottom: 10px; }
+
+    /* Review card */
+    .review-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem; margin-bottom: 12px; transition: box-shadow 0.15s; }
+    .review-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
+    .review-card.done { opacity: 0.5; border-color: #bbf7d0; background: #f0fdf4; }
+    .card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; gap: 12px; }
+    .flag-badge { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
+    .flag-low  { background: #fef3c7; color: #92400e; }
+    .flag-corr { background: #fee2e2; color: #991b1b; }
+    .flag-date { font-size: 11px; color: #94a3b8; }
+    .doc-text { font-size: 13px; color: #374151; line-height: 1.6; background: #f8fafc; border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; border-left: 3px solid #e2e8f0; }
+    .prediction-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+    .pred-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 14px; }
+    .pred-label { font-size: 11px; color: #94a3b8; font-weight: 600; margin-bottom: 2px; }
+    .pred-value { font-size: 14px; font-weight: 700; }
+    .pred-score { font-size: 12px; color: #94a3b8; }
+    .arrow { font-size: 18px; color: #cbd5e1; }
+    .s-pill { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 13px; font-weight: 600; text-transform: capitalize; }
+    .s-positive{background:#d1fae5;color:#065f46}
+    .s-negative{background:#fee2e2;color:#991b1b}
+    .s-neutral {background:#f3f4f6;color:#374151}
+    .s-mixed   {background:#fef3c7;color:#92400e}
+
+    /* Correction UI */
+    .correction-label { font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 8px; }
+    .sent-options { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+    .sent-btn { font-size: 13px; font-weight: 600; padding: 7px 16px; border-radius: 8px; cursor: pointer; border: 2px solid transparent; transition: all 0.15s; }
+    .sent-btn:hover { transform: translateY(-1px); }
+    .sent-btn.selected { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.15); }
+    .btn-positive { background: #d1fae5; color: #065f46; }
+    .btn-negative { background: #fee2e2; color: #991b1b; }
+    .btn-neutral  { background: #f3f4f6; color: #374151; }
+    .btn-mixed    { background: #fef3c7; color: #92400e; }
+    .notes-input { width: 100%; font-size: 13px; padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 8px; background: #fff; color: #374151; resize: none; height: 60px; font-family: inherit; margin-bottom: 10px; }
+    .notes-input:focus { outline: none; border-color: #6366f1; }
+    .action-row { display: flex; gap: 8px; }
+    .submit-btn { font-size: 13px; font-weight: 600; padding: 8px 20px; border-radius: 8px; border: none; background: #6366f1; color: #fff; cursor: pointer; }
+    .submit-btn:hover { background: #4f46e5; }
+    .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .skip-btn { font-size: 13px; font-weight: 500; padding: 8px 16px; border-radius: 8px; border: 1px solid #e2e8f0; background: #fff; color: #64748b; cursor: pointer; }
+    .skip-btn:hover { background: #f8fafc; }
+    .success-msg { font-size: 13px; color: #059669; font-weight: 600; padding: 6px 0; }
+
+    /* Retraining export */
+    .export-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem; margin-top: 1.5rem; }
+    .export-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #94a3b8; margin-bottom: 10px; }
+    .export-desc { font-size: 13px; color: #64748b; margin-bottom: 12px; line-height: 1.6; }
+    .export-btn { font-size: 13px; font-weight: 600; padding: 9px 20px; border-radius: 8px; border: none; background: #059669; color: #fff; cursor: pointer; }
+    .export-btn:hover { background: #047857; }
+    .code-block { font-size: 12px; background: #0f172a; color: #e2e8f0; padding: 12px 16px; border-radius: 8px; margin-top: 12px; line-height: 1.7; font-family: 'Courier New', monospace; display: none; }
+  </style>
+</head>
+<body>
+
+<nav class="nav">
+  <span class="nav-brand">NLP Portfolio</span>
+  <span class="nav-sub">Active Learning</span>
+  <div class="nav-links">
+    <a class="nav-link" href="index.html">Text Analyzer</a>
+    <a class="nav-link" href="batch.html">Batch</a>
+    <a class="nav-link" href="timeline.html">Timeline</a>
+    <a class="nav-link" href="dashboard.html">Dashboard</a>
+    <a class="nav-link active" href="review.html">Review Queue</a>
+  </div>
+</nav>
+
+<div class="page">
+  <div class="page-title">Active learning — review queue</div>
+  <p class="page-sub">Low-confidence predictions flagged for human review. Your corrections feed the retraining pipeline.</p>
+
+  <!-- KPIs -->
+  <div class="kpi-row">
+    <div class="kpi"><div class="kpi-n" id="kpiPending">—</div><div class="kpi-l">pending review</div></div>
+    <div class="kpi"><div class="kpi-n" id="kpiTotal">—</div><div class="kpi-l">total analyses</div></div>
+    <div class="kpi"><div class="kpi-n" id="kpiReady" style="color:#059669">—</div><div class="kpi-l">ready to retrain</div></div>
+    <div class="kpi"><div class="kpi-n">0.70</div><div class="kpi-l">confidence threshold</div></div>
+  </div>
+
+  <!-- How it works -->
+  <div class="how-card">
+    <div class="how-title">How active learning works</div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-title">Model predicts</div>
+        <div class="step-desc">NLP pipeline analyzes text and returns sentiment with confidence score</div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-title">Low confidence flagged</div>
+        <div class="step-desc">Predictions below 70% confidence are auto-queued for human review</div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-title">Human corrects</div>
+        <div class="step-desc">Reviewer selects the correct label — correction saved to database</div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-title">Model retrains</div>
+        <div class="step-desc">Corrected samples exported and used to fine-tune the model</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Queue -->
+  <div class="queue-header">
+    <div class="queue-title">Pending reviews</div>
+    <button class="refresh-btn" onclick="loadQueue()">↻ Refresh</button>
+  </div>
+  <div id="queueWrap"></div>
+
+  <!-- Retraining export -->
+  <div class="export-card">
+    <div class="export-title">Retraining pipeline</div>
+    <div class="export-desc">
+      Once you've reviewed and corrected flagged predictions, export the labeled dataset
+      to retrain your DistilBERT model with the new corrections. Each correction becomes
+      a training sample that improves future predictions.
+    </div>
+    <button class="export-btn" onclick="exportRetraining()">Export retraining data</button>
+    <div class="code-block" id="codeBlock"></div>
+  </div>
+</div>
+
+<script>
+const API = 'http://localhost:8000';
+let queueItems = [];
+
+async function loadStats() {
+  try {
+    const resp = await fetch(`${API}/stats`);
+    const d    = await resp.json();
+    document.getElementById('kpiTotal').textContent   = d.total_analyses || 0;
+    document.getElementById('kpiPending').textContent = d.pending_feedback || 0;
+  } catch(e) { console.error(e); }
+
+  try {
+    const resp = await fetch(`${API}/feedback/retraining-data`);
+    const d    = await resp.json();
+    document.getElementById('kpiReady').textContent = d.total_samples || 0;
+  } catch(e) { console.error(e); }
+}
+
+async function loadQueue() {
+  const wrap = document.getElementById('queueWrap');
+  wrap.innerHTML = '<div class="queue-empty"><div class="icon">⏳</div>Loading...</div>';
+
+  try {
+    const resp = await fetch(`${API}/feedback/queue`);
+    const d    = await resp.json();
+    queueItems = d.items || [];
+
+    if (queueItems.length === 0) {
+      wrap.innerHTML = `
+        <div class="queue-empty">
+          <div class="icon">✅</div>
+          <div style="font-weight:600;color:#374151;margin-bottom:4px">Queue is clear</div>
+          <div>No pending reviews. Run more analyses to generate flagged items.</div>
+        </div>`;
+      return;
+    }
+
+    wrap.innerHTML = queueItems.map((item, i) => renderCard(item, i)).join('');
+  } catch(e) {
+    wrap.innerHTML = `<div class="queue-empty">Could not load queue — is the server running?</div>`;
+  }
+}
+
+function renderCard(item, i) {
+  const flagCls  = item.feedback_type === 'low_confidence' ? 'flag-low' : 'flag-corr';
+  const flagText = item.feedback_type === 'low_confidence' ? '⚠ Low confidence' : '✗ Correction needed';
+  const date     = item.created_at.substring(0, 16).replace('T', ' ');
+  const score    = Math.round((item.predicted_score || 0) * 100);
+
+  return `
+    <div class="review-card" id="card-${item.id}">
+      <div class="card-top">
+        <span class="flag-badge ${flagCls}">${flagText}</span>
+        <span class="flag-date">${date} · ID #${item.id}</span>
+      </div>
+
+      <div class="doc-text">${item.text}</div>
+
+      <div class="prediction-row">
+        <div class="pred-box">
+          <div class="pred-label">Model predicted</div>
+          <div class="pred-value"><span class="s-pill s-${item.predicted}">${item.predicted}</span></div>
+          <div class="pred-score">${score}% confidence</div>
+        </div>
+        <span class="arrow">→</span>
+        <div class="pred-box" style="flex:1">
+          <div class="pred-label">Your correction</div>
+          <div id="selected-${item.id}" style="font-size:13px;color:#94a3b8;font-style:italic">Select below</div>
+        </div>
+      </div>
+
+      <div class="correction-label">What is the correct sentiment?</div>
+      <div class="sent-options">
+        ${['positive','negative','neutral','mixed'].map(s => `
+          <button class="sent-btn btn-${s}" id="btn-${item.id}-${s}"
+            onclick="selectSentiment(${item.id}, '${s}', '${item.predicted}', ${item.predicted_score})">
+            ${s}
+          </button>`).join('')}
+      </div>
+
+      <textarea class="notes-input" id="notes-${item.id}"
+        placeholder="Optional notes — e.g. 'Sarcastic tone misread as positive'"></textarea>
+
+      <div class="action-row">
+        <button class="submit-btn" id="submit-${item.id}"
+          onclick="submitFeedback(${item.id}, ${item.analysis_id}, '${item.text.replace(/'/g,"\\'")}', '${item.predicted}', ${item.predicted_score})"
+          disabled>
+          Submit correction
+        </button>
+        <button class="skip-btn" onclick="skipItem(${item.id})">Skip</button>
+      </div>
+      <div id="msg-${item.id}"></div>
+    </div>`;
+}
+
+let selections = {};
+
+function selectSentiment(itemId, sentiment, predicted, score) {
+  selections[itemId] = sentiment;
+
+  // Update button styles
+  ['positive','negative','neutral','mixed'].forEach(s => {
+    const btn = document.getElementById(`btn-${itemId}-${s}`);
+    if (btn) btn.classList.toggle('selected', s === sentiment);
+  });
+
+  // Update preview
+  document.getElementById(`selected-${itemId}`).innerHTML =
+    `<span class="s-pill s-${sentiment}">${sentiment}</span>`;
+
+  // Enable submit
+  document.getElementById(`submit-${itemId}`).disabled = false;
+}
+
+async function submitFeedback(itemId, analysisId, text, predicted, predictedScore) {
+  const corrected = selections[itemId];
+  if (!corrected) return;
+
+  const notes  = document.getElementById(`notes-${itemId}`).value;
+  const btn    = document.getElementById(`submit-${itemId}`);
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
+
+  try {
+    const resp = await fetch(`${API}/feedback`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        analysis_id:     analysisId || 0,
+        text:            text,
+        predicted:       predicted,
+        predicted_score: predictedScore,
+        corrected:       corrected,
+        feedback_type:   'sentiment_correction',
+        notes:           notes
+      })
+    });
+
+    if (!resp.ok) throw new Error('Failed to save');
+
+    // Mark reviewed
+    await fetch(`${API}/feedback/review`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ feedback_id: itemId })
+    });
+
+    // Visual feedback
+    document.getElementById(`card-${itemId}`).classList.add('done');
+    document.getElementById(`msg-${itemId}`).innerHTML =
+      `<div class="success-msg">✅ Correction saved — added to retraining queue</div>`;
+
+    // Refresh stats
+    loadStats();
+
+  } catch(e) {
+    btn.disabled    = false;
+    btn.textContent = 'Submit correction';
+    document.getElementById(`msg-${itemId}`).innerHTML =
+      `<div style="color:#dc2626;font-size:13px">Error: ${e.message}</div>`;
+  }
+}
+
+async function skipItem(itemId) {
+  await fetch(`${API}/feedback/review`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ feedback_id: itemId })
+  });
+  document.getElementById(`card-${itemId}`).classList.add('done');
+}
+
+async function exportRetraining() {
+  const resp = await fetch(`${API}/feedback/retraining-data`);
+  const d    = await resp.json();
+
+  const block = document.getElementById('codeBlock');
+  block.style.display = 'block';
+
+  if (d.total_samples === 0) {
+    block.textContent = '# No corrected samples yet.\n# Review flagged items above first.';
+    return;
+  }
+
+  const preview = d.samples.slice(0, 3).map(s =>
+    `  {"text": "${s.text.substring(0,60)}...", "label": "${s.label}"}`
+  ).join(',\n');
+
+  block.textContent =
+`# ${d.total_samples} corrected samples ready for retraining
+# Use these to fine-tune your DistilBERT model in Colab:
+
+training_data = [
+${preview}
+  # ... ${d.total_samples} total samples
+]
+
+# Then run your fine-tuning pipeline:
+# python retrain.py --data retraining_export.json --epochs 5`;
+}
+
+// Init
+loadStats();
+loadQueue();
+</script>
+</body>
+</html>

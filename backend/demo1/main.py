@@ -3,7 +3,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from dotenv import load_dotenv
-from backend.demo1.database import init_db, save_analysis, query_analyses, get_stats
+from backend.demo1.database import (
+    init_db, save_analysis, query_analyses, get_stats,
+    save_feedback, get_feedback_queue, mark_reviewed, get_retraining_data
+)
 import anthropic
 import os
 import json
@@ -12,12 +15,11 @@ import csv
 import io
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
-from typing import List
+from typing import List, Optional
 
 load_dotenv()
 
 app = FastAPI(title="NLP Text Analyzer API")
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -26,7 +28,6 @@ app.add_middleware(
 )
 
 init_db()
-
 client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 executor = ThreadPoolExecutor(max_workers=3)
 
@@ -35,7 +36,19 @@ class TextInput(BaseModel):
 
 class BatchInput(BaseModel):
     documents: List[str]
-    labels: List[str] = []  # optional labels for each document
+    labels: List[str] = []
+
+class FeedbackInput(BaseModel):
+    analysis_id: int
+    text: str
+    predicted: str
+    predicted_score: float
+    corrected: str
+    feedback_type: str = "sentiment_correction"
+    notes: str = ""
+
+class ReviewInput(BaseModel):
+    feedback_id: int
 
 def clean_json(raw: str) -> str:
     raw = raw.strip()
@@ -45,7 +58,6 @@ def clean_json(raw: str) -> str:
     return raw.strip()
 
 def run_analysis(text: str, label: str = "") -> dict:
-    """Run a single analysis — called in thread pool for batch."""
     prompt = f"""Analyze this text for NLP tasks.
 
 IMPORTANT: Your entire response must be ONLY a raw JSON object.
@@ -82,21 +94,37 @@ Max 8 entities, max 10 keywords, max 3 tone items."""
             max_tokens=1000,
             messages=[{"role": "user", "content": prompt}]
         )
-        raw = message.content[0].text
+        raw     = message.content[0].text
         cleaned = clean_json(raw)
-        parsed = json.loads(cleaned)
-        row_id = save_analysis(text, parsed)
-        parsed["id"] = row_id
-        parsed["label"] = label
-        parsed["status"] = "success"
+        parsed  = json.loads(cleaned)
+        row_id  = save_analysis(text, parsed)
+        parsed["id"]           = row_id
+        parsed["label"]        = label
+        parsed["status"]       = "success"
         parsed["text_preview"] = text[:120] + "..." if len(text) > 120 else text
-        parsed["word_count"] = len(text.split())
+        parsed["word_count"]   = len(text.split())
+
+        # Auto-flag low confidence for active learning
+        score = parsed.get("sentiment", {}).get("score", 1.0)
+        if score < 0.70:
+            save_feedback(
+                analysis_id     = row_id,
+                text            = text[:500],
+                predicted       = parsed.get("sentiment", {}).get("label", ""),
+                predicted_score = score,
+                corrected       = "",
+                feedback_type   = "low_confidence",
+                notes           = f"Auto-flagged: confidence {score:.2f} below threshold 0.70"
+            )
+            parsed["flagged"] = True
+            parsed["flag_reason"] = f"Low confidence ({score:.0%}) — queued for human review"
+        else:
+            parsed["flagged"] = False
+
         return parsed
     except Exception as e:
         return {
-            "status": "error",
-            "error": str(e),
-            "label": label,
+            "status": "error", "error": str(e), "label": label,
             "text_preview": text[:120] + "..." if len(text) > 120 else text,
             "word_count": len(text.split())
         }
@@ -109,8 +137,7 @@ def health():
 def analyze(body: TextInput):
     if not body.text or len(body.text.strip()) < 20:
         raise HTTPException(status_code=400, detail="Text too short")
-    result = run_analysis(body.text)
-    return result
+    return run_analysis(body.text)
 
 @app.post("/analyze/batch")
 async def analyze_batch(body: BatchInput):
@@ -118,27 +145,20 @@ async def analyze_batch(body: BatchInput):
         raise HTTPException(status_code=400, detail="No documents provided")
     if len(body.documents) > 20:
         raise HTTPException(status_code=400, detail="Max 20 documents per batch")
-
-    # Pad labels if not provided
     labels = body.labels + [""] * (len(body.documents) - len(body.labels))
-
-    # Process in parallel using thread pool
-    loop = asyncio.get_event_loop()
-    tasks = [
+    loop   = asyncio.get_event_loop()
+    tasks  = [
         loop.run_in_executor(executor, run_analysis, doc, label)
         for doc, label in zip(body.documents, labels)
     ]
-    results = await asyncio.gather(*tasks)
-
-    # Summary stats
+    results    = await asyncio.gather(*tasks)
     successful = [r for r in results if r.get("status") == "success"]
     failed     = [r for r in results if r.get("status") == "error"]
     sentiments = [r.get("sentiment", {}).get("label", "") for r in successful]
-
+    flagged    = [r for r in successful if r.get("flagged")]
     return {
-        "total":      len(results),
-        "successful": len(successful),
-        "failed":     len(failed),
+        "total": len(results), "successful": len(successful),
+        "failed": len(failed), "flagged": len(flagged),
         "summary": {
             "positive": sentiments.count("positive"),
             "negative": sentiments.count("negative"),
@@ -154,45 +174,36 @@ async def analyze_batch(body: BatchInput):
 
 @app.post("/analyze/batch/csv")
 async def analyze_batch_csv(body: BatchInput):
-    """Run batch analysis and return results as downloadable CSV."""
     if not body.documents:
         raise HTTPException(status_code=400, detail="No documents provided")
     if len(body.documents) > 20:
         raise HTTPException(status_code=400, detail="Max 20 documents per batch")
-
     labels = body.labels + [""] * (len(body.documents) - len(body.labels))
-
-    loop = asyncio.get_event_loop()
-    tasks = [
+    loop   = asyncio.get_event_loop()
+    tasks  = [
         loop.run_in_executor(executor, run_analysis, doc, label)
         for doc, label in zip(body.documents, labels)
     ]
     results = await asyncio.gather(*tasks)
-
-    # Build CSV
-    output = io.StringIO()
-    writer = csv.writer(output)
+    output  = io.StringIO()
+    writer  = csv.writer(output)
     writer.writerow([
-        "id", "label", "status", "word_count",
-        "sentiment", "score", "tone",
-        "top_keywords", "entity_count", "summary", "text_preview"
+        "id", "label", "status", "word_count", "sentiment", "score",
+        "tone", "top_keywords", "entity_count", "flagged", "summary", "text_preview"
     ])
-
     for r in results:
         writer.writerow([
-            r.get("id", ""),
-            r.get("label", ""),
-            r.get("status", ""),
+            r.get("id", ""), r.get("label", ""), r.get("status", ""),
             r.get("word_count", ""),
             r.get("sentiment", {}).get("label", "") if r.get("status") == "success" else "",
             r.get("sentiment", {}).get("score", "") if r.get("status") == "success" else "",
             ", ".join(r.get("tone", [])) if r.get("status") == "success" else "",
             ", ".join([k["word"] for k in r.get("keywords", [])[:3]]) if r.get("status") == "success" else "",
             len(r.get("entities", [])) if r.get("status") == "success" else "",
+            r.get("flagged", False),
             r.get("summary", "") if r.get("status") == "success" else r.get("error", ""),
             r.get("text_preview", "")
         ])
-
     output.seek(0)
     return StreamingResponse(
         io.BytesIO(output.getvalue().encode()),
@@ -204,7 +215,6 @@ async def analyze_batch_csv(body: BatchInput):
 def timeline(body: TextInput):
     if not body.text or len(body.text.strip()) < 20:
         raise HTTPException(status_code=400, detail="Text too short")
-
     prompt = f"""Extract a chronological timeline from this text.
 
 IMPORTANT: Your entire response must be ONLY a raw JSON object.
@@ -229,16 +239,13 @@ Return exactly this structure:
   ],
   "date_range": {{
     "start": "earliest date in YYYY-MM-DD",
-    "end": "latest date in YYYY-MM-DD"
+    "end":   "latest date in YYYY-MM-DD"
   }},
   "key_parties": ["list of main people and organizations"],
   "total_financial_impact": "total dollar amount if calculable, else null"
 }}
 
-Rules:
-- Extract ALL dates mentioned in chronological order
-- significance: high=major event, medium=supporting, low=background
-- Max 20 events"""
+Rules: extract ALL dates in chronological order, max 20 events."""
 
     try:
         message = client.messages.create(
@@ -246,14 +253,58 @@ Rules:
             max_tokens=1500,
             messages=[{"role": "user", "content": prompt}]
         )
-        raw = message.content[0].text
+        raw     = message.content[0].text
         cleaned = clean_json(raw)
-        parsed = json.loads(cleaned)
-        return parsed
+        return json.loads(cleaned)
     except json.JSONDecodeError as e:
         raise HTTPException(status_code=500, detail=f"JSON parse error: {str(e)}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+# ── Active learning endpoints ─────────────────────────────────────────────────
+
+@app.post("/feedback")
+def submit_feedback(body: FeedbackInput):
+    """Submit a human correction for a model prediction."""
+    row_id = save_feedback(
+        analysis_id     = body.analysis_id,
+        text            = body.text,
+        predicted       = body.predicted,
+        predicted_score = body.predicted_score,
+        corrected       = body.corrected,
+        feedback_type   = body.feedback_type,
+        notes           = body.notes
+    )
+    return {
+        "feedback_id": row_id,
+        "message": "Feedback saved — added to retraining queue",
+        "retraining_trigger": "Queue this sample for next model update"
+    }
+
+@app.get("/feedback/queue")
+def feedback_queue():
+    """Get all pending items awaiting human review."""
+    items = get_feedback_queue(reviewed=False)
+    return {
+        "pending": len(items),
+        "items": items
+    }
+
+@app.post("/feedback/review")
+def review_feedback(body: ReviewInput):
+    """Mark a feedback item as reviewed."""
+    mark_reviewed(body.feedback_id)
+    return {"message": f"Feedback {body.feedback_id} marked as reviewed"}
+
+@app.get("/feedback/retraining-data")
+def retraining_data():
+    """Export all corrected samples ready for model retraining."""
+    samples = get_retraining_data()
+    return {
+        "total_samples": len(samples),
+        "message": f"{len(samples)} corrected samples ready for retraining",
+        "samples": samples
+    }
 
 @app.get("/history")
 def history(

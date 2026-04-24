@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Batch NLP Processor</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8f9fa; color: #1a1a1a; padding: 2rem; }
+    .container { max-width: 900px; margin: 0 auto; }
+    h1 { font-size: 26px; font-weight: 700; margin-bottom: 4px; }
+    .sub { color: #666; font-size: 14px; margin-bottom: 1rem; }
+    .badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; margin-right: 6px; }
+    .b1{background:#dbeafe;color:#1e40af} .b2{background:#d1fae5;color:#065f46} .b3{background:#fef3c7;color:#92400e}
+
+    /* Document input area */
+    .doc-builder { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 1.25rem; margin-top: 1.25rem; }
+    .doc-builder-title { font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; }
+    .doc-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
+    .doc-item { display: flex; gap: 8px; align-items: flex-start; }
+    .doc-num { font-size: 12px; font-weight: 700; color: #9ca3af; min-width: 24px; padding-top: 10px; }
+    .doc-inputs { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+    .doc-label { font-size: 12px; padding: 6px 10px; border: 1px solid #e5e7eb; border-radius: 6px; background: #fff; width: 100%; color: #374151; }
+    .doc-label:focus { outline: none; border-color: #3b82f6; }
+    .doc-textarea { font-size: 13px; padding: 8px 10px; border: 1px solid #e5e7eb; border-radius: 6px; background: #fff; width: 100%; resize: vertical; min-height: 70px; font-family: inherit; line-height: 1.5; color: #374151; }
+    .doc-textarea:focus { outline: none; border-color: #3b82f6; }
+    .doc-remove { padding: 6px 10px; border-radius: 6px; border: 1px solid #fca5a5; background: #fef2f2; color: #b91c1c; cursor: pointer; font-size: 12px; font-weight: 600; margin-top: 8px; }
+    .doc-remove:hover { background: #fee2e2; }
+
+    .add-btn { font-size: 13px; font-weight: 600; padding: 8px 16px; border-radius: 8px; border: 1px dashed #d1d5db; background: #f9fafb; color: #6b7280; cursor: pointer; width: 100%; transition: all 0.15s; }
+    .add-btn:hover { border-color: #3b82f6; color: #3b82f6; background: #eff6ff; }
+
+    /* Presets */
+    .presets { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .preset-chip { font-size: 12px; padding: 5px 12px; border-radius: 20px; border: 1px solid #ddd; cursor: pointer; background: #fff; color: #555; }
+    .preset-chip:hover { border-color: #3b82f6; color: #3b82f6; }
+
+    /* Action row */
+    .action-row { display: flex; gap: 10px; margin-top: 1.25rem; align-items: center; flex-wrap: wrap; }
+    .btn { padding: 10px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; border: 1px solid #ddd; background: #fff; transition: all 0.15s; }
+    .btn:hover { background: #f3f4f6; }
+    .btn.primary { background: #3b82f6; color: #fff; border-color: #3b82f6; }
+    .btn.primary:hover { background: #2563eb; }
+    .btn.green { background: #059669; color: #fff; border-color: #059669; }
+    .btn.green:hover { background: #047857; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .doc-count { font-size: 13px; color: #9ca3af; margin-left: auto; }
+
+    /* Progress */
+    .progress-wrap { display: none; margin-top: 1rem; }
+    .progress-label { font-size: 13px; color: #6b7280; margin-bottom: 6px; display: flex; justify-content: space-between; }
+    .progress-track { height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden; }
+    .progress-fill { height: 100%; background: #3b82f6; border-radius: 4px; transition: width 0.4s ease; width: 0%; }
+
+    .loader { display: none; align-items: center; gap: 10px; padding: 0.75rem 0; color: #666; font-size: 14px; }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: #3b82f6; animation: bounce 1.2s infinite; }
+    .dot:nth-child(2){animation-delay:0.2s} .dot:nth-child(3){animation-delay:0.4s}
+    @keyframes bounce{0%,80%,100%{transform:scale(0.6);opacity:0.4}40%{transform:scale(1);opacity:1}}
+
+    .error { background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px; padding: 12px 16px; font-size: 13px; color: #b91c1c; margin-top: 12px; display: none; }
+    .results { margin-top: 1.5rem; display: none; flex-direction: column; gap: 14px; }
+
+    /* Summary cards */
+    .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; }
+    .sum-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px; text-align: center; }
+    .sum-n { font-size: 26px; font-weight: 700; color: #111827; }
+    .sum-l { font-size: 11px; color: #9ca3af; margin-top: 2px; }
+
+    /* Sentiment bar */
+    .sent-bar-wrap { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 1.25rem; }
+    .sent-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .sent-row:last-child { margin-bottom: 0; }
+    .sent-name { font-size: 13px; font-weight: 500; min-width: 70px; text-transform: capitalize; }
+    .sent-track { flex: 1; height: 8px; background: #f3f4f6; border-radius: 4px; overflow: hidden; }
+    .sent-fill { height: 100%; border-radius: 4px; }
+    .sent-count { font-size: 13px; font-weight: 600; min-width: 24px; text-align: right; color: #6b7280; }
+
+    /* Results table */
+    .results-table-wrap { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; }
+    .table-header { display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.25rem; border-bottom: 1px solid #e5e7eb; }
+    .table-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #9ca3af; }
+    table { width: 100%; border-collapse: collapse; }
+    th { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #9ca3af; padding: 10px 16px; text-align: left; border-bottom: 1px solid #f3f4f6; background: #f9fafb; }
+    td { font-size: 13px; padding: 10px 16px; border-bottom: 1px solid #f3f4f6; color: #374151; vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #f9fafb; }
+    .s-pill { padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; text-transform: capitalize; display: inline-block; }
+    .s-positive{background:#d1fae5;color:#065f46} .s-negative{background:#fee2e2;color:#991b1b} .s-neutral{background:#f3f4f6;color:#374151} .s-mixed{background:#fef3c7;color:#92400e}
+    .status-ok  { color: #059669; font-weight: 600; }
+    .status-err { color: #dc2626; font-weight: 600; }
+    .kw-list { font-size: 12px; color: #6b7280; }
+    .score-bar { height: 4px; background: #e5e7eb; border-radius: 2px; margin-top: 4px; overflow: hidden; }
+    .score-fill { height: 100%; border-radius: 2px; background: #3b82f6; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>Batch NLP processor</h1>
+  <p class="sub">Analyze up to 20 documents simultaneously — results saved to database and exportable as CSV</p>
+  <span class="badge b1">Batch processing</span>
+  <span class="badge b2">Data pipeline</span>
+  <span class="badge b3">CSV export</span>
+
+  <div class="doc-builder">
+    <div class="doc-builder-title">
+      <span>Documents to analyze</span>
+      <span id="docCount" style="font-size:12px;color:#9ca3af">0 / 20</span>
+    </div>
+    <div class="doc-list" id="docList"></div>
+    <button class="add-btn" onclick="addDoc()">+ Add document</button>
+
+    <div class="presets">
+      <span style="font-size:12px;color:#9ca3af">Load preset:</span>
+      <span class="preset-chip" onclick="loadPreset('legal')">Legal cases</span>
+      <span class="preset-chip" onclick="loadPreset('news')">News articles</span>
+      <span class="preset-chip" onclick="loadPreset('reviews')">Product reviews</span>
+      <span class="preset-chip" onclick="loadPreset('earnings')">Earnings calls</span>
+    </div>
+  </div>
+
+  <div class="action-row">
+    <button class="btn primary" id="btnAnalyze" onclick="runBatch()">Run batch analysis</button>
+    <button class="btn green" id="btnCsv" onclick="runBatchCsv()" style="display:none">Download CSV</button>
+    <button class="btn" onclick="clearAll()">Clear all</button>
+  </div>
+
+  <div class="progress-wrap" id="progressWrap">
+    <div class="progress-label">
+      <span id="progressText">Processing...</span>
+      <span id="progressPct">0%</span>
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+  </div>
+
+  <div class="loader" id="loader"><div class="dot"></div><div class="dot"></div><div class="dot"></div><span id="lmsg">Analyzing documents...</span></div>
+  <div class="error" id="err"></div>
+  <div class="results" id="results"></div>
+</div>
+
+<script>
+const API = 'http://localhost:8000';
+let docs = [];
+let lastResults = null;
+
+const PRESETS = {
+  legal: [
+    { label: "Fraud complaint", text: "On March 15, 2024, Meridian Capital Group LLC was charged by the SEC with orchestrating a $47 million Ponzi scheme targeting retail investors across Florida, Texas, and California. CEO Richard Harlow and CFO Sandra Voss allegedly falsified quarterly earnings reports and misappropriated client funds between January 2021 and December 2023." },
+    { label: "NDA breach", text: "This Agreement shall be governed by the laws of the State of New York. The parties agree to submit to binding arbitration in New York County. The Company shall indemnify and hold harmless Employee from any claims arising from acts performed in good faith within the scope of employment." },
+    { label: "Employment dispute", text: "The plaintiff, Maria Chen, filed a wrongful termination suit against TechVentures Inc. on April 2, 2024, alleging she was dismissed without cause after 8 years of service. The company denies all allegations and maintains her termination was performance-based following three consecutive quarters of missed targets." }
+  ],
+  news: [
+    { label: "Tech earnings", text: "Apple Inc. reported record quarterly revenue of $123.9 billion in Q1 2024, driven by strong iPhone 15 sales in China and India. CEO Tim Cook praised the company's performance in emerging markets but warned that supply chain disruptions in Taiwan could impact next quarter's output." },
+    { label: "Market update", text: "Goldman Sachs raised its 12-month price target for Microsoft from $420 to $500, citing Azure cloud growth of 28% YoY and robust enterprise AI adoption. Analyst Sarah Chen noted that Copilot integration has accelerated deal cycles by roughly 15%." },
+    { label: "Fed decision", text: "The Federal Reserve held interest rates steady at 5.25%-5.50% for the third consecutive meeting, signaling caution amid persistent inflation concerns. Chair Jerome Powell indicated that rate cuts remain possible in 2024 but emphasized the Fed needs more confidence that inflation is moving toward its 2% target." }
+  ],
+  reviews: [
+    { label: "Positive review", text: "I've been using this product for 3 months and honestly it's been a game-changer. The build quality is exceptional, battery lasts 48 hours, and customer support from TechCorp was incredibly responsive. The only downside is the price at $299 but absolutely worth it." },
+    { label: "Negative review", text: "Extremely disappointed with this purchase. The device stopped working after two weeks, customer service was unhelpful and dismissive, and the return process was a nightmare. I wasted $180 on something that belongs in the trash. Never buying from this brand again." },
+    { label: "Mixed review", text: "The camera quality is stunning and the design is beautiful. However the battery life is terrible — barely lasts 6 hours with moderate use. For $899 I expected much better. The software is smooth but crashes occasionally. Overall a mixed bag — great hardware let down by poor optimization." }
+  ],
+  earnings: [
+    { label: "Q1 call excerpt", text: "We delivered another strong quarter with revenue of $21.3 billion, up 18% year over year. Our cloud segment grew 34%, driven by enterprise AI workloads. We are raising full-year guidance to $85 billion. Operating margins expanded 200 basis points to 28.4% on disciplined cost management." },
+    { label: "Q2 warning", text: "We are revising our Q2 outlook downward due to weaker than expected demand in our consumer electronics division. Revenue is now expected to be $14.2 billion to $14.8 billion, below our prior guidance of $16 billion. Gross margins will be impacted by elevated inventory levels and increased promotional activity." },
+    { label: "M&A announcement", text: "We are pleased to announce the acquisition of DataSync AI for $2.1 billion in cash. This strategic acquisition accelerates our AI capabilities and is expected to be accretive to earnings within 18 months. The transaction is subject to regulatory approval and is expected to close in Q3 2024." }
+  ]
+};
+
+function updateCount() {
+  document.getElementById('docCount').textContent = `${docs.length} / 20`;
+}
+
+function addDoc(label='', text='') {
+  if (docs.length >= 20) return;
+  const id = Date.now();
+  docs.push({ id, label, text });
+  renderDocs();
+}
+
+function removeDoc(id) {
+  docs = docs.filter(d => d.id !== id);
+  renderDocs();
+}
+
+function renderDocs() {
+  const list = document.getElementById('docList');
+  list.innerHTML = docs.map((d, i) => `
+    <div class="doc-item" id="item-${d.id}">
+      <div class="doc-num">${i+1}.</div>
+      <div class="doc-inputs">
+        <input class="doc-label" placeholder="Label (optional, e.g. Doc A, Case #123)"
+          value="${d.label}"
+          oninput="docs[${i}].label=this.value">
+        <textarea class="doc-textarea" placeholder="Paste document text here..."
+          oninput="docs[${i}].text=this.value">${d.text}</textarea>
+        <button class="doc-remove" onclick="removeDoc(${d.id})">Remove</button>
+      </div>
+    </div>`).join('');
+  updateCount();
+}
+
+function loadPreset(key) {
+  docs = [];
+  PRESETS[key].forEach(p => {
+    docs.push({ id: Date.now() + Math.random(), label: p.label, text: p.text });
+  });
+  renderDocs();
+}
+
+function clearAll() {
+  docs = [];
+  lastResults = null;
+  renderDocs();
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('err').style.display = 'none';
+  document.getElementById('btnCsv').style.display = 'none';
+  document.getElementById('progressWrap').style.display = 'none';
+}
+
+function showErr(msg) {
+  const d = document.getElementById('err');
+  d.textContent = 'Error: ' + msg;
+  d.style.display = 'block';
+}
+
+function setProgress(pct, text) {
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressPct').textContent = pct + '%';
+  document.getElementById('progressText').textContent = text;
+}
+
+const lmsgs = ['Analyzing documents...','Running NLP pipeline...','Extracting entities...','Scoring sentiment...','Saving to database...'];
+let mi = 0, mt = null;
+
+async function runBatch() {
+  const validDocs = docs.filter(d => d.text.trim().length >= 20);
+  if (validDocs.length === 0) { showErr('Please add at least one document with 20+ characters.'); return; }
+
+  const btn = document.getElementById('btnAnalyze');
+  btn.disabled = true;
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('err').style.display = 'none';
+  document.getElementById('btnCsv').style.display = 'none';
+  document.getElementById('progressWrap').style.display = 'block';
+  document.getElementById('loader').style.display = 'flex';
+  setProgress(10, `Sending ${validDocs.length} documents...`);
+
+  mi = 0;
+  document.getElementById('lmsg').textContent = lmsgs[0];
+  mt = setInterval(() => {
+    mi = (mi+1) % lmsgs.length;
+    document.getElementById('lmsg').textContent = lmsgs[mi];
+    setProgress(Math.min(90, parseInt(document.getElementById('progressPct').textContent) + 15), lmsgs[mi]);
+  }, 1800);
+
+  try {
+    const resp = await fetch(`${API}/analyze/batch`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        documents: validDocs.map(d => d.text),
+        labels: validDocs.map(d => d.label)
+      })
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.detail || resp.statusText);
+    setProgress(100, 'Complete!');
+    lastResults = { data, validDocs };
+    render(data, validDocs);
+    document.getElementById('btnCsv').style.display = 'inline-block';
+  } catch(e) {
+    if (e.message.includes('fetch')) {
+      showErr('Cannot reach backend. Make sure server is running on port 8000.');
+    } else {
+      showErr(e.message);
+    }
+  } finally {
+    btn.disabled = false;
+    clearInterval(mt);
+    document.getElementById('loader').style.display = 'none';
+    setTimeout(() => { document.getElementById('progressWrap').style.display = 'none'; }, 1500);
+  }
+}
+
+async function runBatchCsv() {
+  if (!lastResults) return;
+  const { validDocs } = lastResults;
+  const btn = document.getElementById('btnCsv');
+  btn.disabled = true;
+  btn.textContent = 'Generating CSV...';
+
+  try {
+    const resp = await fetch(`${API}/analyze/batch/csv`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        documents: validDocs.map(d => d.text),
+        labels: validDocs.map(d => d.label)
+      })
+    });
+    if (!resp.ok) throw new Error('CSV generation failed');
+    const blob = await resp.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'batch_analysis.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch(e) {
+    showErr(e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Download CSV';
+  }
+}
+
+function sentColor(l) {
+  return {positive:'#10b981',negative:'#ef4444',neutral:'#9ca3af',mixed:'#f59e0b'}[l]||'#9ca3af';
+}
+
+function render(data, validDocs) {
+  const s = data.summary;
+  const total = data.total;
+
+  const sentRows = ['positive','negative','neutral','mixed'].map(label => {
+    const count = s[label] || 0;
+    const pct = total > 0 ? Math.round(count/total*100) : 0;
+    const col = sentColor(label);
+    return `<div class="sent-row">
+      <span class="sent-name">${label}</span>
+      <div class="sent-track"><div class="sent-fill" style="width:${pct}%;background:${col}"></div></div>
+      <span class="sent-count">${count}</span>
+    </div>`;
+  }).join('');
+
+  const tableRows = data.results.map((r, i) => {
+    if (r.status === 'error') {
+      return `<tr>
+        <td>${i+1}</td>
+        <td>${r.label||'—'}</td>
+        <td class="status-err">Error</td>
+        <td colspan="5" style="color:#dc2626;font-size:12px">${r.error}</td>
+      </tr>`;
+    }
+    const sent = r.sentiment || {};
+    const score = Math.round((sent.score||0)*100);
+    const kws = (r.keywords||[]).slice(0,3).map(k=>k.word).join(', ');
+    const ents = (r.entities||[]).slice(0,3).map(e=>e.text).join(', ');
+    return `<tr>
+      <td style="color:#9ca3af;font-weight:600">${i+1}</td>
+      <td style="font-weight:500">${r.label||'—'}</td>
+      <td class="status-ok">✓</td>
+      <td>
+        <span class="s-pill s-${sent.label}">${sent.label}</span>
+        <div class="score-bar"><div class="score-fill" style="width:${score}%"></div></div>
+        <div style="font-size:11px;color:#9ca3af;margin-top:2px">${score}% confidence</div>
+      </td>
+      <td><span style="font-size:12px;color:#6b7280">${ents||'—'}</span></td>
+      <td class="kw-list">${kws||'—'}</td>
+      <td style="font-size:12px;color:#6b7280;max-width:200px">${(r.summary||'').substring(0,100)}${(r.summary||'').length>100?'...':''}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('results').innerHTML = `
+    <div class="summary-grid">
+      <div class="sum-card"><div class="sum-n">${data.total}</div><div class="sum-l">total docs</div></div>
+      <div class="sum-card"><div class="sum-n" style="color:#059669">${data.successful}</div><div class="sum-l">successful</div></div>
+      <div class="sum-card"><div class="sum-n" style="color:#dc2626">${data.failed}</div><div class="sum-l">failed</div></div>
+      <div class="sum-card"><div class="sum-n">${s.avg_score}</div><div class="sum-l">avg sentiment score</div></div>
+    </div>
+
+    <div class="sent-bar-wrap">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#9ca3af;margin-bottom:12px">Sentiment distribution</div>
+      ${sentRows}
+    </div>
+
+    <div class="results-table-wrap">
+      <div class="table-header">
+        <span class="table-title">Document results</span>
+        <span style="font-size:12px;color:#9ca3af">${data.successful} of ${data.total} analyzed successfully</span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Label</th>
+            <th>Status</th>
+            <th>Sentiment</th>
+            <th>Key entities</th>
+            <th>Keywords</th>
+            <th>Summary</th>
+          </tr>
+        </thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+    </div>`;
+
+  document.getElementById('results').style.display = 'flex';
+}
+
+// Start with 3 empty docs
+addDoc(); addDoc(); addDoc();
+</script>
+</body>
+</html>

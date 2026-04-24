@@ -1,6 +1,5 @@
 """
 Contradiction detection across documents using Claude + FAISS.
-Finds conflicting claims about the same entities across stored analyses.
 """
 import json
 import os
@@ -14,10 +13,16 @@ from dotenv import load_dotenv
 
 load_dotenv()
 client   = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
-EMBEDDER = SentenceTransformer("all-MiniLM-L6-v2")
+
+_EMBEDDER = None
+
+def get_embedder():
+    global _EMBEDDER
+    if _EMBEDDER is None:
+        _EMBEDDER = SentenceTransformer("all-MiniLM-L6-v2")
+    return _EMBEDDER
 
 def get_all_documents() -> list:
-    """Pull full document texts from database."""
     conn = get_connection()
     rows = conn.execute(
         "SELECT id, text, entities, sentiment, created_at FROM analyses"
@@ -35,13 +40,13 @@ def get_all_documents() -> list:
     return docs
 
 def find_similar_doc_pairs(docs: list, top_k: int = 5) -> list:
-    """Use FAISS to find document pairs worth checking for contradictions."""
     if len(docs) < 2:
         return []
 
-    texts = [d["text"] for d in docs]
-    vecs  = EMBEDDER.encode(texts, convert_to_numpy=True)
-    vecs  = vecs / np.linalg.norm(vecs, axis=1, keepdims=True)
+    embedder = get_embedder()
+    texts    = [d["text"] for d in docs]
+    vecs     = embedder.encode(texts, convert_to_numpy=True)
+    vecs     = vecs / np.linalg.norm(vecs, axis=1, keepdims=True)
 
     dim   = vecs.shape[1]
     index = faiss.IndexFlatIP(dim)
@@ -62,8 +67,8 @@ def find_similar_doc_pairs(docs: list, top_k: int = 5) -> list:
             seen.add(key)
             if float(score) > 0.40:
                 pairs.append({
-                    "doc_a": docs[i],
-                    "doc_b": docs[j],
+                    "doc_a":      docs[i],
+                    "doc_b":      docs[j],
                     "similarity": round(float(score), 4)
                 })
 
@@ -78,10 +83,8 @@ def clean_json(raw: str) -> str:
     return raw.strip()
 
 def detect_contradictions_in_pair(doc_a: dict, doc_b: dict) -> dict:
-    """Use Claude to find contradictions between two documents."""
     prompt = f"""You are a legal fact-checker. Compare these two documents
-and identify any factual contradictions — conflicting claims about the
-same people, organizations, dates, locations, or amounts.
+and identify any factual contradictions.
 
 IMPORTANT: Respond ONLY with valid JSON. No markdown. No backticks.
 Start with {{ and end with }}
@@ -110,11 +113,8 @@ Return this exact structure:
   "summary": "one sentence about the relationship between these documents"
 }}
 
-Rules:
-- Only flag real contradictions, not just different topics
-- max 4 contradictions
-- If no contradictions found, return has_contradictions: false and empty array
-- shared_entities: max 5"""
+Rules: max 4 contradictions, shared_entities max 5.
+If no contradictions, return has_contradictions: false and empty array."""
 
     try:
         message = client.messages.create(
@@ -122,9 +122,8 @@ Rules:
             max_tokens=1000,
             messages=[{"role": "user", "content": prompt}]
         )
-        raw     = message.content[0].text
-        cleaned = clean_json(raw)
-        result  = json.loads(cleaned)
+        raw    = message.content[0].text
+        result = json.loads(clean_json(raw))
         result["doc_a_id"]      = doc_a["id"]
         result["doc_b_id"]      = doc_b["id"]
         result["doc_a_preview"] = doc_a["text"][:100]
@@ -145,28 +144,23 @@ Rules:
         }
 
 def run_contradiction_scan() -> dict:
-    """Full scan — find similar doc pairs then check each for contradictions."""
     docs = get_all_documents()
     if len(docs) < 2:
         return {
-            "total_docs":         len(docs),
-            "pairs_checked":      0,
+            "total_docs":           len(docs),
+            "pairs_checked":        0,
             "contradictions_found": 0,
-            "results":            []
+            "results":              []
         }
 
     pairs   = find_similar_doc_pairs(docs)
     results = []
-
     for pair in pairs:
-        result = detect_contradictions_in_pair(pair["doc_a"], pair["doc_b"])
+        result              = detect_contradictions_in_pair(pair["doc_a"], pair["doc_b"])
         result["similarity"] = pair["similarity"]
         results.append(result)
 
-    contradictions_found = sum(
-        1 for r in results if r.get("has_contradictions")
-    )
-
+    contradictions_found = sum(1 for r in results if r.get("has_contradictions"))
     return {
         "total_docs":           len(docs),
         "pairs_checked":        len(pairs),

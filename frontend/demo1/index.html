@@ -180,9 +180,16 @@ function render(d, orig) {
     .map(t => `<span class="tone-chip">${t}</span>`).join('');
 
   const entHtml = (d.entities || []).length
-    ? (d.entities).map(e =>
-        `<span class="ent ${e.type || 'OTHER'}">${e.text}<span class="ent-lbl">${e.type}</span></span>`
-      ).join('')
+    ? (d.entities).map(e => {
+        const conf = e.confidence ? Math.round(e.confidence * 100) : null;
+        const sal  = e.salience  ? Math.round(e.salience  * 100) : null;
+        const confColor = conf >= 90 ? '#059669' : conf >= 75 ? '#d97706' : '#dc2626';
+        return `<span class="ent ${e.type || 'OTHER'}" title="Confidence: ${conf}% | Salience: ${sal}%">
+          ${e.text}
+          <span class="ent-lbl">${e.type}</span>
+          ${conf ? `<span style="font-size:10px;font-weight:700;color:${confColor};margin-left:3px">${conf}%</span>` : ''}
+        </span>`;
+      }).join('')
     : '<span style="font-size:13px;color:#9ca3af">None detected</span>';
 
   const kwHtml = (d.keywords || [])
@@ -207,6 +214,13 @@ function render(d, orig) {
     <div class="card">
       <div class="card-title">Named entities</div>
       <div class="ent-wrap">${entHtml}</div>
+      ${d.entity_summary ? `
+        <div style="margin-top:12px;padding-top:10px;border-top:1px solid #f3f4f6;display:flex;gap:16px;flex-wrap:wrap">
+          <span style="font-size:12px;color:#6b7280">Avg confidence: <strong style="color:#111827">${Math.round((d.entity_summary.avg_confidence||0)*100)}%</strong></span>
+          <span style="font-size:12px;color:#6b7280">High confidence: <strong style="color:#059669">${d.entity_summary.high_confidence||0}</strong></span>
+          ${d.entity_summary.review_recommended&&d.entity_summary.review_recommended.length ? 
+            `<span style="font-size:12px;color:#d97706">⚠ Review: <strong>${d.entity_summary.review_recommended.join(', ')}</strong></span>` : ''}
+        </div>` : ''}
     </div>
 
     <div class="card">

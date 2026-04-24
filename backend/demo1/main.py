@@ -1,4 +1,6 @@
+from backend.demo1.entity_confidence import score_entities, get_entity_summary
 from backend.demo1.entity_linker import find_linked_entities, link_documents_by_entity
+from backend.demo1.entity_confidence import score_entities, get_entity_summary
 from backend.demo1.coref_disambig import disambiguate_entities, resolve_coreferences
 from backend.demo1.contradiction import run_contradiction_scan
 from fastapi import FastAPI, HTTPException, Query
@@ -102,6 +104,10 @@ Max 8 entities, max 10 keywords, max 3 tone items."""
         parsed  = json.loads(cleaned)
         row_id  = save_analysis(text, parsed)
         parsed["id"]           = row_id
+	# Score entities with confidence and salience
+        if parsed.get("entities"):
+            parsed["entities"] = score_entities(text, parsed["entities"])
+            parsed["entity_summary"] = get_entity_summary(parsed["entities"])
         parsed["label"]        = label
         parsed["status"]       = "success"
         parsed["text_preview"] = text[:120] + "..." if len(text) > 120 else text
@@ -331,6 +337,26 @@ def coreference(body: TextInput):
     if not body.text or len(body.text.strip()) < 20:
         raise HTTPException(status_code=400, detail="Text too short")
     return resolve_coreferences(body.text)
+
+@app.post("/entities/score")
+def entities_score(body: TextInput):
+    """Extract and score entities with confidence and salience metrics."""
+    if not body.text or len(body.text.strip()) < 20:
+        raise HTTPException(status_code=400, detail="Text too short")
+    
+    doc = nlp_spacy(body.text[:5000]) if hasattr(body, 'nlp_spacy') else None
+    
+    # Use Claude for initial extraction then score
+    result = run_analysis(body.text)
+    entities = result.get("entities", [])
+    scored   = score_entities(body.text, entities)
+    summary  = get_entity_summary(scored)
+    
+    return {
+        "entities": scored,
+        "summary":  summary,
+        "text_preview": body.text[:100]
+    }
 
 @app.get("/stats")
 def stats():

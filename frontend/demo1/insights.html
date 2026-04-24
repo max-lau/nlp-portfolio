@@ -141,10 +141,12 @@
   <div class="page-title">Document insights</div>
   <p class="page-sub">Cross-document entity linking and contradiction detection powered by FAISS + sentence transformers</p>
 
-  <div class="tabs">
+<div class="tabs">
     <button class="tab active" onclick="switchTab('entity')">Entity linking</button>
     <button class="tab" onclick="switchTab('docs')">Linked documents</button>
     <button class="tab" onclick="switchTab('contra')">Contradiction scanner</button>
+    <button class="tab" onclick="switchTab('disambig')">Disambiguation</button>
+    <button class="tab" onclick="switchTab('coref')">Coreference</button>
   </div>
 
   <!-- TAB 1: Entity linking -->
@@ -153,7 +155,6 @@
       <div class="card-title">Search for linked entities</div>
       <p style="font-size:13px;color:#64748b;margin-bottom:12px;line-height:1.6">
         Type any entity name to find semantically similar entities across all your stored documents.
-        For example, searching "Apple" may surface "Apple Inc.", "Tim Cook's company", "the tech giant".
       </p>
       <div class="search-row">
         <input class="search-input" id="entityQuery"
@@ -167,7 +168,6 @@
         <span class="qchip" onclick="quickSearch('Goldman Sachs')">Goldman Sachs</span>
         <span class="qchip" onclick="quickSearch('New York')">New York</span>
         <span class="qchip" onclick="quickSearch('Apple')">Apple</span>
-        <span class="qchip" onclick="quickSearch('fraud')">fraud</span>
       </div>
       <div class="loader" id="entityLoader">
         <div class="dot"></div><div class="dot"></div><div class="dot"></div>
@@ -192,9 +192,7 @@
     <div class="card" style="margin-bottom:14px">
       <div class="card-title">Contradiction scanner</div>
       <p style="font-size:13px;color:#64748b;margin-bottom:14px;line-height:1.6">
-        Scans all stored documents for factual contradictions — conflicting claims about
-        the same people, dates, locations, or amounts. Uses FAISS to find similar document
-        pairs, then Claude to identify specific contradictions.
+        Scans all stored documents for factual contradictions using FAISS + Claude.
       </p>
       <button class="scan-btn" id="scanBtn" onclick="runScan()">Run contradiction scan</button>
     </div>
@@ -205,31 +203,93 @@
     <div class="kpi-row" id="contraKpi" style="display:none"></div>
     <div id="contraResults"></div>
   </div>
-</div>
+
+  <!-- TAB 4: Disambiguation -->
+  <div class="tab-panel" id="panel-disambig">
+    <div class="card">
+      <div class="card-title">Named entity disambiguation</div>
+      <p style="font-size:13px;color:#64748b;margin-bottom:12px;line-height:1.6">
+        Resolves ambiguous entity mentions to their canonical real-world form based on context.
+        "Apple" → Apple Inc. (tech company), "Jordan" → Michael Jordan (person) vs Jordan (country).
+      </p>
+      <textarea id="disambigText" style="width:100%;min-height:120px;font-size:13px;padding:12px;border:1px solid #e2e8f0;border-radius:8px;resize:vertical;font-family:inherit;margin-bottom:10px"
+        placeholder="Paste text with ambiguous entity mentions..."></textarea>
+      <div style="margin-bottom:10px">
+        <span style="font-size:12px;color:#94a3b8">Examples: </span>
+        <span class="qchip" onclick="setDisambig('apple')">Apple/Cook</span>
+        <span class="qchip" onclick="setDisambig('legal')">Legal case</span>
+        <span class="qchip" onclick="setDisambig('finance')">Finance</span>
+      </div>
+      <button class="search-btn" id="disambigBtn" onclick="runDisambig()" style="background:#059669">Disambiguate entities</button>
+      <div class="loader" id="disambigLoader">
+        <div class="dot" style="background:#059669"></div>
+        <div class="dot" style="background:#059669"></div>
+        <div class="dot" style="background:#059669"></div>
+        <span>Resolving entities...</span>
+      </div>
+      <div id="disambigResults" style="margin-top:14px"></div>
+    </div>
+  </div>
+
+  <!-- TAB 5: Coreference -->
+  <div class="tab-panel" id="panel-coref">
+    <div class="card">
+      <div class="card-title">Coreference resolution</div>
+      <p style="font-size:13px;color:#64748b;margin-bottom:12px;line-height:1.6">
+        Finds all pronouns and noun phrases that refer to the same entity and chains them together.
+        "Alexander Vance stole funds. <strong>He</strong> then transferred <strong>them</strong> to crypto."
+        → He = Alexander Vance, them = the funds.
+      </p>
+      <textarea id="corefText" style="width:100%;min-height:120px;font-size:13px;padding:12px;border:1px solid #e2e8f0;border-radius:8px;resize:vertical;font-family:inherit;margin-bottom:10px"
+        placeholder="Paste text with pronouns and references to resolve..."></textarea>
+      <div style="margin-bottom:10px">
+        <span style="font-size:12px;color:#94a3b8">Examples: </span>
+        <span class="qchip" onclick="setCoref('fraud')">Fraud case</span>
+        <span class="qchip" onclick="setCoref('corporate')">Corporate</span>
+        <span class="qchip" onclick="setCoref('news')">News article</span>
+      </div>
+      <button class="search-btn" id="corefBtn" onclick="runCoref()" style="background:#dc2626">Resolve coreferences</button>
+      <div class="loader" id="corefLoader">
+        <div class="dot" style="background:#dc2626"></div>
+        <div class="dot" style="background:#dc2626"></div>
+        <div class="dot" style="background:#dc2626"></div>
+        <span>Building coreference chains...</span>
+      </div>
+      <div id="corefResults" style="margin-top:14px"></div>
+    </div>
+  </div>
 
 <script>
 const API = 'http://localhost:8000';
 
+const DISAMBIG_EX = {
+  apple: "Apple reported record earnings this quarter. Cook said the company's Vision Pro sales exceeded expectations. The firm also announced a partnership with Goldman to expand Apple Card services.",
+  legal: "The defendant, referred to throughout as Vance, was identified by Jenkins as the perpetrator. The People allege that he used AV Digital Holdings, his shell company, to launder the funds. The DA's office confirmed charges.",
+  finance: "GS raised its price target for MSFT, citing Azure growth. The bank's analyst noted the Redmond company's AI investments were paying off. Satya said the firm would double down on Copilot integration."
+};
+
+const COREF_EX = {
+  fraud: "Alexander Vance stole $750,000 from Citywide Venture Partners. He did this by sending fraudulent emails from a fake account. The company believed him and wired the money to his account. He then moved it to a cryptocurrency exchange to hide it. Detective Jenkins investigated him for three months before she arrested him.",
+  corporate: "Apple CEO Tim Cook announced the company's new AI strategy yesterday. He said it would transform how the firm develops products. The tech giant has been investing heavily in machine learning. Cook believes it will give them a competitive edge over rivals like Google and Microsoft. They have already integrated it into their latest iPhone lineup.",
+  news: "The Federal Reserve raised interest rates by 25 basis points. Chair Powell said the central bank remains committed to fighting inflation. He noted that the institution would continue monitoring economic data. The decision surprised markets, which had expected them to pause. Analysts say it reflects their concern about persistent price pressures."
+};
+
 function switchTab(tab) {
+  const tabs = ['entity','docs','contra','disambig','coref'];
   document.querySelectorAll('.tab').forEach((t,i) => {
-    t.classList.toggle('active', ['entity','docs','contra'][i] === tab);
+    t.classList.toggle('active', tabs[i] === tab);
   });
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   document.getElementById(`panel-${tab}`).classList.add('active');
-
   if (tab === 'docs' && !document.getElementById('docsResults').innerHTML) loadLinkedDocs();
 }
 
-function simClass(s) {
-  return s > 0.85 ? 'sim-high' : s > 0.70 ? 'sim-med' : 'sim-low';
-}
-
+function simClass(s) { return s > 0.85 ? 'sim-high' : s > 0.70 ? 'sim-med' : 'sim-low'; }
 function relClass(r) {
   return {same_case:'rel-same',related:'rel-related',conflicting:'rel-conflict',unrelated:'rel-unrelated'}[r]||'rel-unrelated';
 }
 
 // ── Entity linking ──────────────────────────────────────────────────────────
-
 function quickSearch(q) {
   document.getElementById('entityQuery').value = q;
   searchEntity();
@@ -238,25 +298,18 @@ function quickSearch(q) {
 async function searchEntity() {
   const query = document.getElementById('entityQuery').value.trim();
   if (!query) return;
-
   const btn = document.getElementById('entityBtn');
   btn.disabled = true;
   document.getElementById('entityLoader').style.display = 'flex';
   document.getElementById('entityResults').innerHTML = '';
-
   try {
-    const resp = await fetch(
-      `${API}/entities/link?entity=${encodeURIComponent(query)}`
-    );
+    const resp = await fetch(`${API}/entities/link?entity=${encodeURIComponent(query)}`);
     const d = await resp.json();
-
     if (!d.results || d.results.length === 0) {
       document.getElementById('entityResults').innerHTML =
-        `<div class="empty">No linked entities found for "<strong>${query}</strong>".<br>
-        Try running more analyses first, or try a different search term.</div>`;
+        `<div class="empty">No linked entities found for "<strong>${query}</strong>".</div>`;
       return;
     }
-
     document.getElementById('entityResults').innerHTML = `
       <div style="font-size:13px;color:#64748b;margin-bottom:10px">
         Found <strong>${d.matches}</strong> linked entities for "<strong>${query}</strong>"
@@ -275,8 +328,7 @@ async function searchEntity() {
           </div>
         </div>`).join('')}`;
   } catch(e) {
-    document.getElementById('entityResults').innerHTML =
-      `<div class="empty">Error: ${e.message}</div>`;
+    document.getElementById('entityResults').innerHTML = `<div class="empty">Error: ${e.message}</div>`;
   } finally {
     btn.disabled = false;
     document.getElementById('entityLoader').style.display = 'none';
@@ -284,101 +336,69 @@ async function searchEntity() {
 }
 
 // ── Linked documents ────────────────────────────────────────────────────────
-
 async function loadLinkedDocs() {
   document.getElementById('docsLoader').style.display = 'flex';
   document.getElementById('docsResults').innerHTML = '';
-
   try {
     const resp = await fetch(`${API}/documents/linked`);
-    const d    = await resp.json();
-
-    document.getElementById('docsKpi').innerHTML = `
-      <div class="kpi"><div class="kpi-n">${d.pairs_found}</div><div class="kpi-l">linked pairs found</div></div>`;
-
+    const d = await resp.json();
+    document.getElementById('docsKpi').innerHTML =
+      `<div class="kpi"><div class="kpi-n">${d.pairs_found}</div><div class="kpi-l">linked pairs found</div></div>`;
     if (!d.pairs || d.pairs.length === 0) {
       document.getElementById('docsResults').innerHTML =
-        '<div class="empty">No linked document pairs found yet.<br>Analyze more documents to build connections.</div>';
+        '<div class="empty">No linked document pairs found yet.</div>';
       return;
     }
-
     document.getElementById('docsResults').innerHTML = d.pairs.map(p => `
       <div class="pair-card">
         <div class="pair-header">
-          <span style="font-size:13px;font-weight:600;color:#0f172a">
-            Doc #${p.doc_a_id} ↔ Doc #${p.doc_b_id}
-          </span>
+          <span style="font-size:13px;font-weight:600;color:#0f172a">Doc #${p.doc_a_id} ↔ Doc #${p.doc_b_id}</span>
           <span class="pair-sim">${Math.round(p.similarity*100)}% similar</span>
         </div>
         <div class="pair-docs">
-          <div class="pair-doc">
-            <div class="pair-doc-label">Document ${p.doc_a_id}</div>
-            <div class="pair-doc-text">${p.doc_a_preview}...</div>
-          </div>
-          <div class="pair-doc">
-            <div class="pair-doc-label">Document ${p.doc_b_id}</div>
-            <div class="pair-doc-text">${p.doc_b_preview}...</div>
-          </div>
+          <div class="pair-doc"><div class="pair-doc-label">Document ${p.doc_a_id}</div><div class="pair-doc-text">${p.doc_a_preview}...</div></div>
+          <div class="pair-doc"><div class="pair-doc-label">Document ${p.doc_b_id}</div><div class="pair-doc-text">${p.doc_b_preview}...</div></div>
         </div>
-        ${p.shared_entities && p.shared_entities.length ? `
-          <div>
-            <div style="font-size:11px;font-weight:700;color:#94a3b8;margin-bottom:4px">SHARED ENTITIES</div>
-            <div class="shared-ents">
-              ${p.shared_entities.map(e => `<span class="shared-ent">${e}</span>`).join('')}
-            </div>
-          </div>` : ''}
+        ${p.shared_entities&&p.shared_entities.length?`
+          <div><div style="font-size:11px;font-weight:700;color:#94a3b8;margin-bottom:4px">SHARED ENTITIES</div>
+          <div class="shared-ents">${p.shared_entities.map(e=>`<span class="shared-ent">${e}</span>`).join('')}</div></div>`:''}
       </div>`).join('');
   } catch(e) {
-    document.getElementById('docsResults').innerHTML =
-      `<div class="empty">Error: ${e.message}</div>`;
+    document.getElementById('docsResults').innerHTML = `<div class="empty">Error: ${e.message}</div>`;
   } finally {
     document.getElementById('docsLoader').style.display = 'none';
   }
 }
 
 // ── Contradiction scanner ───────────────────────────────────────────────────
-
-const cMsgs = [
-  'Finding similar document pairs...','Running FAISS similarity search...',
-  'Checking for contradictions...','Analyzing conflicting claims...','Building report...'
-];
+const cMsgs = ['Finding similar document pairs...','Running FAISS similarity search...','Checking for contradictions...','Analyzing conflicting claims...','Building report...'];
 let cmi = 0, cmt = null;
 
 async function runScan() {
   const btn = document.getElementById('scanBtn');
   btn.disabled = true;
   document.getElementById('contraLoader').style.display = 'flex';
-  document.getElementById('contraKpi').style.display    = 'none';
-  document.getElementById('contraResults').innerHTML    = '';
-
+  document.getElementById('contraKpi').style.display = 'none';
+  document.getElementById('contraResults').innerHTML = '';
   cmi = 0;
   document.getElementById('contraMsg').textContent = cMsgs[0];
-  cmt = setInterval(() => {
-    cmi = (cmi+1) % cMsgs.length;
-    document.getElementById('contraMsg').textContent = cMsgs[cmi];
-  }, 2000);
-
+  cmt = setInterval(() => { cmi=(cmi+1)%cMsgs.length; document.getElementById('contraMsg').textContent=cMsgs[cmi]; }, 2000);
   try {
     const resp = await fetch(`${API}/contradictions/scan`, { method: 'POST' });
-    const d    = await resp.json();
-
-    // KPIs
+    const d = await resp.json();
     document.getElementById('contraKpi').style.display = 'grid';
     document.getElementById('contraKpi').innerHTML = `
       <div class="kpi"><div class="kpi-n">${d.total_docs}</div><div class="kpi-l">docs scanned</div></div>
       <div class="kpi"><div class="kpi-n">${d.pairs_checked}</div><div class="kpi-l">pairs checked</div></div>
       <div class="kpi"><div class="kpi-n" style="color:${d.contradictions_found>0?'#dc2626':'#059669'}">${d.contradictions_found}</div><div class="kpi-l">contradictions found</div></div>`;
-
-    if (!d.results || d.results.length === 0) {
-      document.getElementById('contraResults').innerHTML =
-        '<div class="empty">✅ No document pairs to compare yet.<br>Analyze at least 2 documents first.</div>';
+    if (!d.results||d.results.length===0) {
+      document.getElementById('contraResults').innerHTML = '<div class="empty">✅ No document pairs to compare yet.</div>';
       return;
     }
-
     document.getElementById('contraResults').innerHTML = d.results.map(r => {
       const relCls = relClass(r.relationship);
-      const contrasHtml = r.has_contradictions && r.contradictions.length
-        ? r.contradictions.map(c => `
+      const contrasHtml = r.has_contradictions&&r.contradictions.length
+        ? r.contradictions.map(c=>`
             <div class="contra-item">
               <div class="ci-header">
                 <span class="ci-type">${c.type}</span>
@@ -386,65 +406,196 @@ async function runScan() {
                 <span class="ci-entity">re: ${c.entity}</span>
               </div>
               <div class="ci-claims">
-                <div class="ci-claim">
-                  <div class="ci-claim-label">Doc #${r.doc_a_id} says</div>
-                  <div class="ci-claim-text">${c.claim_a}</div>
-                </div>
-                <div class="ci-claim">
-                  <div class="ci-claim-label">Doc #${r.doc_b_id} says</div>
-                  <div class="ci-claim-text">${c.claim_b}</div>
-                </div>
+                <div class="ci-claim"><div class="ci-claim-label">Doc #${r.doc_a_id} says</div><div class="ci-claim-text">${c.claim_a}</div></div>
+                <div class="ci-claim"><div class="ci-claim-label">Doc #${r.doc_b_id} says</div><div class="ci-claim-text">${c.claim_b}</div></div>
               </div>
               <div class="ci-expl">⚠ ${c.explanation}</div>
             </div>`).join('')
         : `<div class="no-contra">✅ No contradictions found between these documents</div>`;
-
-      const sharedHtml = r.shared_entities && r.shared_entities.length
-        ? `<div class="shared-section">
-            <div class="shared-label">SHARED ENTITIES</div>
-            <div class="shared-ents">
-              ${r.shared_entities.map(e=>`<span class="shared-ent">${e}</span>`).join('')}
-            </div>
-           </div>` : '';
-
+      const sharedHtml = r.shared_entities&&r.shared_entities.length
+        ? `<div class="shared-section"><div class="shared-label">SHARED ENTITIES</div>
+           <div class="shared-ents">${r.shared_entities.map(e=>`<span class="shared-ent">${e}</span>`).join('')}</div></div>` : '';
       return `
         <div class="contra-card">
           <div class="contra-header">
-            <span style="font-size:14px;font-weight:700;color:#0f172a">
-              Doc #${r.doc_a_id} vs Doc #${r.doc_b_id}
-              <span style="font-size:12px;font-weight:400;color:#94a3b8;margin-left:8px">
-                ${Math.round((r.similarity||0)*100)}% similar
-              </span>
+            <span style="font-size:14px;font-weight:700;color:#0f172a">Doc #${r.doc_a_id} vs Doc #${r.doc_b_id}
+              <span style="font-size:12px;font-weight:400;color:#94a3b8;margin-left:8px">${Math.round((r.similarity||0)*100)}% similar</span>
             </span>
             <span class="contra-rel ${relCls}">${r.relationship}</span>
           </div>
           <div class="contra-summary">${r.summary}</div>
           <div class="contra-docs">
-            <div class="contra-doc">
-              <div class="contra-doc-label">Document ${r.doc_a_id}</div>
-              <div class="contra-doc-text">${r.doc_a_preview}...</div>
-            </div>
-            <div class="contra-doc">
-              <div class="contra-doc-label">Document ${r.doc_b_id}</div>
-              <div class="contra-doc-text">${r.doc_b_preview}...</div>
-            </div>
+            <div class="contra-doc"><div class="contra-doc-label">Document ${r.doc_a_id}</div><div class="contra-doc-text">${r.doc_a_preview}...</div></div>
+            <div class="contra-doc"><div class="contra-doc-label">Document ${r.doc_b_id}</div><div class="contra-doc-text">${r.doc_b_preview}...</div></div>
           </div>
           ${sharedHtml}
-          ${r.has_contradictions ? `
-            <div style="font-size:11px;font-weight:700;color:#dc2626;margin:12px 0 8px">
-              ${r.contradictions.length} CONTRADICTION${r.contradictions.length>1?'S':''} DETECTED
-            </div>` : ''}
+          ${r.has_contradictions?`<div style="font-size:11px;font-weight:700;color:#dc2626;margin:12px 0 8px">${r.contradictions.length} CONTRADICTION${r.contradictions.length>1?'S':''} DETECTED</div>`:''}
           ${contrasHtml}
         </div>`;
     }).join('');
-
   } catch(e) {
-    document.getElementById('contraResults').innerHTML =
-      `<div class="empty">Error: ${e.message}</div>`;
+    document.getElementById('contraResults').innerHTML = `<div class="empty">Error: ${e.message}</div>`;
   } finally {
     btn.disabled = false;
     clearInterval(cmt);
     document.getElementById('contraLoader').style.display = 'none';
+  }
+}
+
+// ── Disambiguation ──────────────────────────────────────────────────────────
+function setDisambig(k) {
+  document.getElementById('disambigText').value = DISAMBIG_EX[k];
+}
+
+async function runDisambig() {
+  const text = document.getElementById('disambigText').value.trim();
+  if (!text) return;
+  const btn = document.getElementById('disambigBtn');
+  btn.disabled = true;
+  document.getElementById('disambigLoader').style.display = 'flex';
+  document.getElementById('disambigResults').innerHTML = '';
+  try {
+    const resp = await fetch(`${API}/disambiguate`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({text})
+    });
+    const d = await resp.json();
+    const entHtml = (d.disambiguated||[]).map(e => `
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;margin-bottom:8px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;flex-wrap:wrap;gap:6px">
+          <div>
+            <span style="font-size:14px;font-weight:700;color:#0f172a">"${e.mention}"</span>
+            <span style="font-size:12px;color:#94a3b8;margin-left:8px">→</span>
+            <span style="font-size:14px;font-weight:600;color:#059669;margin-left:8px">${e.canonical_form}</span>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <span style="font-size:11px;padding:2px 8px;border-radius:20px;background:#dbeafe;color:#1e40af;font-weight:600">${e.entity_type}</span>
+            <span style="font-size:11px;padding:2px 8px;border-radius:20px;background:${e.confidence>0.8?'#d1fae5':'#fef3c7'};color:${e.confidence>0.8?'#065f46':'#92400e'};font-weight:600">${Math.round(e.confidence*100)}% confident</span>
+            ${e.ambiguous?'<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:#fee2e2;color:#991b1b;font-weight:600">ambiguous</span>':''}
+          </div>
+        </div>
+        <div style="font-size:12px;color:#64748b;margin-bottom:4px">${e.category}</div>
+        ${e.aliases&&e.aliases.length?`<div style="font-size:12px;color:#94a3b8">Also referred to as: ${e.aliases.join(', ')}</div>`:''}
+        ${e.context_clues&&e.context_clues.length?`<div style="font-size:12px;color:#94a3b8;margin-top:2px">Context clues: ${e.context_clues.join(', ')}</div>`:''}
+        ${e.ambiguous&&e.alternative_interpretations&&e.alternative_interpretations.length?`
+          <div style="font-size:12px;color:#d97706;margin-top:4px">⚠ Alternative: ${e.alternative_interpretations.join(' | ')}</div>`:''}
+      </div>`).join('');
+
+    const graphHtml = (d.entity_graph||[]).map(g => `
+      <div style="font-size:13px;padding:6px 0;border-bottom:1px solid #f3f4f6;display:flex;gap:8px;align-items:center">
+        <span style="font-weight:600;color:#0f172a">${g.entity_a}</span>
+        <span style="color:#94a3b8;font-size:12px">→ ${g.relationship} →</span>
+        <span style="font-weight:600;color:#0f172a">${g.entity_b}</span>
+      </div>`).join('');
+
+    document.getElementById('disambigResults').innerHTML = `
+      <div style="font-size:13px;color:#64748b;font-style:italic;margin-bottom:12px">${d.summary||''}</div>
+      <div style="font-size:11px;font-weight:700;color:#94a3b8;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.08em">Disambiguated entities</div>
+      ${entHtml}
+      ${graphHtml ? `
+        <div style="margin-top:14px">
+          <div style="font-size:11px;font-weight:700;color:#94a3b8;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.08em">Entity relationship graph</div>
+          ${graphHtml}
+        </div>` : ''}`;
+  } catch(e) {
+    document.getElementById('disambigResults').innerHTML = `<div class="empty">Error: ${e.message}</div>`;
+  } finally {
+    btn.disabled = false;
+    document.getElementById('disambigLoader').style.display = 'none';
+  }
+}
+
+// ── Coreference resolution ──────────────────────────────────────────────────
+function setCoref(k) {
+  document.getElementById('corefText').value = COREF_EX[k];
+}
+
+async function runCoref() {
+  const text = document.getElementById('corefText').value.trim();
+  if (!text) return;
+  const btn = document.getElementById('corefBtn');
+  btn.disabled = true;
+  document.getElementById('corefLoader').style.display = 'flex';
+  document.getElementById('corefResults').innerHTML = '';
+  try {
+    const resp = await fetch(`${API}/coreference`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({text})
+    });
+    const d = await resp.json();
+    const stats = d.statistics || {};
+
+    const chainsHtml = (d.chains||[]).map((chain, ci) => {
+      const colors = ['#6366f1','#dc2626','#059669','#d97706','#0891b2','#7c3aed','#db2777','#ea580c'];
+      const col = colors[ci % colors.length];
+      const mentionsHtml = chain.mentions.map(m => `
+        <span style="display:inline-flex;align-items:center;gap:4px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:3px 8px;margin:2px;font-size:12px">
+          <span style="width:8px;height:8px;border-radius:50%;background:${col};flex-shrink:0"></span>
+          <strong>"${m.text}"</strong>
+          <span style="color:#94a3b8;font-size:11px">${m.type}</span>
+          ${m.is_first_mention?'<span style="font-size:10px;color:#059669;font-weight:700">FIRST</span>':''}
+        </span>`).join('');
+      return `
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;margin-bottom:8px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+            <span style="width:12px;height:12px;border-radius:50%;background:${col};flex-shrink:0"></span>
+            <span style="font-size:14px;font-weight:700;color:#0f172a">${chain.entity}</span>
+            <span style="font-size:11px;padding:2px 8px;border-radius:20px;background:#dbeafe;color:#1e40af;font-weight:600">${chain.entity_type}</span>
+            <span style="font-size:11px;color:#94a3b8">${chain.mentions.length} mention${chain.mentions.length!==1?'s':''}</span>
+          </div>
+          <div>${mentionsHtml}</div>
+        </div>`;
+    }).join('');
+
+    const ambigHtml = (d.ambiguous_pronouns||[]).map(a => `
+      <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px;margin-bottom:6px;font-size:13px">
+        <strong>"${a.pronoun}"</strong> could refer to:
+        ${a.possible_referents.map(r=>`<span style="margin:0 4px;font-weight:600">${r}</span>`).join('|')}
+        → Most likely: <span style="color:#059669;font-weight:700">${a.most_likely}</span>
+        <span style="color:#94a3b8;font-size:12px">(${a.reason})</span>
+      </div>`).join('');
+
+    const resolvedHtml = d.resolved_text
+      ? `<div style="font-size:13px;line-height:1.8;color:#374151;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:14px;border-left:4px solid #059669">
+           ${d.resolved_text.replace(/\[([^\]]+)\]/g, '<strong style="color:#059669;background:#d1fae5;padding:1px 4px;border-radius:3px">[$1]</strong>')}</div>` : '';
+
+    document.getElementById('corefResults').innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-bottom:14px">
+        <div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:24px;font-weight:700">${stats.chains_found||d.chains?.length||0}</div>
+          <div style="font-size:11px;color:#94a3b8;margin-top:2px">chains found</div>
+        </div>
+        <div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:24px;font-weight:700">${stats.total_mentions||0}</div>
+          <div style="font-size:11px;color:#94a3b8;margin-top:2px">total mentions</div>
+        </div>
+        <div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:24px;font-weight:700;color:#6366f1">${stats.pronouns_resolved||0}</div>
+          <div style="font-size:11px;color:#94a3b8;margin-top:2px">pronouns resolved</div>
+        </div>
+        <div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:24px;font-weight:700;color:#d97706">${stats.ambiguous_count||0}</div>
+          <div style="font-size:11px;color:#94a3b8;margin-top:2px">ambiguous</div>
+        </div>
+      </div>
+
+      <div style="font-size:11px;font-weight:700;color:#94a3b8;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.08em">Coreference chains</div>
+      ${chainsHtml}
+
+      ${ambigHtml ? `
+        <div style="font-size:11px;font-weight:700;color:#d97706;margin:12px 0 6px;text-transform:uppercase;letter-spacing:0.08em">⚠ Ambiguous pronouns</div>
+        ${ambigHtml}` : ''}
+
+      ${resolvedHtml ? `
+        <div style="font-size:11px;font-weight:700;color:#059669;margin:12px 0 6px;text-transform:uppercase;letter-spacing:0.08em">Resolved text</div>
+        ${resolvedHtml}` : ''}`;
+  } catch(e) {
+    document.getElementById('corefResults').innerHTML = `<div class="empty">Error: ${e.message}</div>`;
+  } finally {
+    btn.disabled = false;
+    document.getElementById('corefLoader').style.display = 'none';
   }
 }
 </script>

@@ -1,4 +1,5 @@
 from backend.demo1.entity_linker import find_linked_entities, link_documents_by_entity
+from backend.demo1.coref_disambig import disambiguate_entities, resolve_coreferences
 from backend.demo1.contradiction import run_contradiction_scan
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -316,6 +317,20 @@ def history(
 ):
     results = query_analyses(sentiment=sentiment, keyword=keyword, limit=limit)
     return {"count": len(results), "results": results}
+
+@app.post("/disambiguate")
+def disambiguate(body: TextInput):
+    """Resolve ambiguous entity mentions to canonical real-world forms."""
+    if not body.text or len(body.text.strip()) < 20:
+        raise HTTPException(status_code=400, detail="Text too short")
+    return disambiguate_entities(body.text)
+
+@app.post("/coreference")
+def coreference(body: TextInput):
+    """Resolve pronouns and noun phrases to their referent entities."""
+    if not body.text or len(body.text.strip()) < 20:
+        raise HTTPException(status_code=400, detail="Text too short")
+    return resolve_coreferences(body.text)
 
 @app.get("/stats")
 def stats():

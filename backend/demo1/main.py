@@ -1,3 +1,4 @@
+from backend.demo1.summary_scorer import score_summary, batch_score_summaries
 from backend.demo1.entity_confidence import score_entities, get_entity_summary
 from backend.demo1.entity_linker import find_linked_entities, link_documents_by_entity
 from backend.demo1.entity_confidence import score_entities, get_entity_summary
@@ -357,6 +358,49 @@ def entities_score(body: TextInput):
         "summary":  summary,
         "text_preview": body.text[:100]
     }
+
+@app.post("/summary/score")
+def summary_score(body: TextInput):
+    """
+    Score a summary against its source document.
+    Pass JSON with source and summary fields.
+    """
+    try:
+        data    = json.loads(body.text)
+        source  = data.get("source", "")
+        summary = data.get("summary", "")
+        if not source or not summary:
+            raise HTTPException(
+                status_code=400,
+                detail="Provide JSON with 'source' and 'summary' fields"
+            )
+        return score_summary(source, summary)
+    except json.JSONDecodeError:
+        raise HTTPException(
+            status_code=400,
+            detail="Body must be JSON: {source: '...', summary: '...'}"
+        )
+
+@app.post("/summary/score/auto")
+def summary_score_auto(body: TextInput):
+    """
+    Analyze text, generate summary, then immediately score it.
+    One endpoint that does the full pipeline.
+    """
+    if not body.text or len(body.text.strip()) < 20:
+        raise HTTPException(status_code=400, detail="Text too short")
+
+    # Run full analysis to get the summary
+    result  = run_analysis(body.text)
+    summary = result.get("summary", "")
+
+    if not summary:
+        raise HTTPException(status_code=500, detail="No summary generated")
+
+    # Score the summary
+    score          = score_summary(body.text, summary)
+    result["summary_score"] = score
+    return result
 
 @app.get("/stats")
 def stats():

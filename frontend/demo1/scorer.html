@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Summarization Quality Scorer</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f1f5f9; color: #1a1a1a; }
+    .nav { background: #0f172a; padding: 0 2rem; display: flex; align-items: center; gap: 1.5rem; height: 56px; }
+    .nav-brand { font-size: 15px; font-weight: 700; color: #fff; }
+    .nav-sub { font-size: 12px; color: #64748b; }
+    .nav-links { margin-left: auto; display: flex; gap: 8px; }
+    .nav-link { font-size: 12px; font-weight: 500; padding: 5px 12px; border-radius: 6px; color: #94a3b8; cursor: pointer; border: none; background: transparent; text-decoration: none; }
+    .nav-link:hover { background: #1e293b; color: #fff; }
+    .nav-link.active { background: #1e293b; color: #fff; }
+    .page { padding: 1.5rem 2rem; max-width: 900px; margin: 0 auto; }
+    .page-title { font-size: 22px; font-weight: 700; color: #0f172a; margin-bottom: 4px; }
+    .page-sub { font-size: 13px; color: #64748b; margin-bottom: 1.5rem; }
+    .badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; margin-right: 6px; margin-bottom: 1rem; }
+    .b1{background:#ede9fe;color:#5b21b6} .b2{background:#d1fae5;color:#065f46} .b3{background:#dbeafe;color:#1e40af}
+
+    /* Tabs */
+    .tabs { display: flex; gap: 4px; margin-bottom: 1.5rem; background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 4px; width: fit-content; }
+    .tab { font-size: 13px; font-weight: 600; padding: 7px 18px; border-radius: 7px; cursor: pointer; color: #64748b; border: none; background: transparent; }
+    .tab.active { background: #0f172a; color: #fff; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem; margin-bottom: 14px; }
+    .card-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #94a3b8; margin-bottom: 12px; }
+    textarea { width: 100%; font-size: 13px; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; resize: vertical; font-family: inherit; line-height: 1.6; background: #fff; color: #374151; }
+    textarea:focus { outline: none; border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.1); }
+    .btn { font-size: 13px; font-weight: 600; padding: 10px 24px; border-radius: 8px; cursor: pointer; border: none; }
+    .btn-primary { background: #6366f1; color: #fff; }
+    .btn-primary:hover { background: #4f46e5; }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-secondary { background: #fff; color: #374151; border: 1px solid #e2e8f0; }
+    .btn-secondary:hover { background: #f8fafc; }
+    .chip { font-size: 12px; padding: 4px 12px; border-radius: 20px; border: 1px solid #e2e8f0; cursor: pointer; background: #fff; color: #64748b; display: inline-block; margin: 3px 4px 3px 0; }
+    .chip:hover { border-color: #6366f1; color: #6366f1; }
+    .loader { display: none; align-items: center; gap: 10px; padding: 1rem 0; color: #64748b; font-size: 14px; }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: #6366f1; animation: bounce 1.2s infinite; }
+    .dot:nth-child(2){animation-delay:0.2s} .dot:nth-child(3){animation-delay:0.4s}
+    @keyframes bounce{0%,80%,100%{transform:scale(0.6);opacity:0.4}40%{transform:scale(1);opacity:1}}
+    .err { background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px; padding: 12px; font-size: 13px; color: #b91c1c; display: none; margin-top: 10px; }
+
+    /* Score display */
+    .score-hero { display: flex; gap: 16px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
+    .score-circle { width: 90px; height: 90px; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 4px solid; flex-shrink: 0; }
+    .score-n { font-size: 26px; font-weight: 800; line-height: 1; }
+    .score-l { font-size: 10px; font-weight: 600; opacity: 0.7; }
+    .verdict-excellent { color: #059669; border-color: #059669; background: #f0fdf4; }
+    .verdict-good      { color: #0891b2; border-color: #0891b2; background: #f0f9ff; }
+    .verdict-acceptable{ color: #d97706; border-color: #d97706; background: #fffbeb; }
+    .verdict-poor      { color: #dc2626; border-color: #dc2626; background: #fef2f2; }
+    .verdict-error     { color: #94a3b8; border-color: #94a3b8; background: #f8fafc; }
+
+    .metrics-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+    .metric-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; text-align: center; }
+    .metric-n { font-size: 22px; font-weight: 700; }
+    .metric-l { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+    .metric-bar { height: 4px; background: #e2e8f0; border-radius: 2px; margin-top: 6px; overflow: hidden; }
+    .metric-fill { height: 100%; border-radius: 2px; }
+
+    .sub-scores { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px,1fr)); gap: 8px; margin-bottom: 14px; }
+    .sub-box { background: #f8fafc; border-radius: 8px; padding: 10px 12px; }
+    .sub-label { font-size: 11px; color: #94a3b8; font-weight: 600; margin-bottom: 4px; }
+    .sub-val { font-size: 15px; font-weight: 700; }
+    .sub-bar { height: 4px; background: #e2e8f0; border-radius: 2px; margin-top: 4px; overflow: hidden; }
+    .sub-fill { height: 100%; border-radius: 2px; }
+
+    .coverage-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+    @media(max-width:600px){ .coverage-grid,.metrics-grid{ grid-template-columns:1fr; } }
+    .cov-box { border-radius: 8px; padding: 10px 12px; }
+    .cov-covered { background: #f0fdf4; border: 1px solid #bbf7d0; }
+    .cov-missed  { background: #fffbeb; border: 1px solid #fde68a; }
+    .cov-added   { background: #fef2f2; border: 1px solid #fecaca; }
+    .cov-title { font-size: 11px; font-weight: 700; margin-bottom: 6px; }
+    .cov-covered .cov-title { color: #065f46; }
+    .cov-missed  .cov-title { color: #92400e; }
+    .cov-added   .cov-title { color: #991b1b; }
+    .cov-item { font-size: 12px; padding: 3px 0; border-bottom: 1px solid rgba(0,0,0,0.05); line-height: 1.4; color: #374151; }
+    .cov-item:last-child { border-bottom: none; }
+    .cov-empty { font-size: 12px; color: #94a3b8; font-style: italic; }
+
+    .feedback-box { font-size: 14px; line-height: 1.8; color: #374151; padding: 14px 16px; background: #f8fafc; border-radius: 8px; border-left: 4px solid #6366f1; margin-bottom: 10px; }
+    .improvement-box { font-size: 13px; color: #374151; padding: 10px 14px; background: #fffbeb; border-radius: 8px; border-left: 4px solid #f59e0b; }
+
+    .meta-row { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px; color: #94a3b8; margin-top: 10px; }
+    .meta-item span { font-weight: 600; color: #374151; }
+  </style>
+</head>
+<body>
+
+<nav class="nav">
+  <span class="nav-brand">NLP Portfolio</span>
+  <span class="nav-sub">Summary Scorer</span>
+  <div class="nav-links">
+    <a class="nav-link" href="index.html">Text Analyzer</a>
+    <a class="nav-link" href="batch.html">Batch</a>
+    <a class="nav-link" href="timeline.html">Timeline</a>
+    <a class="nav-link" href="dashboard.html">Dashboard</a>
+    <a class="nav-link" href="insights.html">Insights</a>
+    <a class="nav-link active" href="scorer.html">Scorer</a>
+  </div>
+</nav>
+
+<div class="page">
+  <div class="page-title">Summarization quality scorer</div>
+  <p class="page-sub">BERTScore-equivalent evaluation — precision, recall, F1, hallucination detection</p>
+  <span class="badge b1">BERTScore-equivalent</span>
+  <span class="badge b2">Hallucination detection</span>
+  <span class="badge b3">Coverage analysis</span>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('manual')">Manual evaluation</button>
+    <button class="tab" onclick="switchTab('auto')">Auto pipeline</button>
+  </div>
+
+  <!-- TAB 1: Manual -->
+  <div class="tab-panel active" id="panel-manual">
+    <div class="card">
+      <div class="card-title">Source document</div>
+      <textarea id="sourceText" rows="5" placeholder="Paste the original document here..."></textarea>
+    </div>
+    <div class="card">
+      <div class="card-title">Summary to evaluate</div>
+      <textarea id="summaryText" rows="3" placeholder="Paste the summary to score..."></textarea>
+    </div>
+    <div style="margin-bottom:10px">
+      <span style="font-size:12px;color:#94a3b8">Load example: </span>
+      <span class="chip" onclick="loadEx('news')">News article</span>
+      <span class="chip" onclick="loadEx('legal')">Legal clause</span>
+      <span class="chip" onclick="loadEx('good')">Good summary</span>
+      <span class="chip" onclick="loadEx('poor')">Poor summary</span>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-primary" id="scoreBtn" onclick="scoreManual()">Score summary</button>
+      <button class="btn btn-secondary" onclick="clearManual()">Clear</button>
+    </div>
+    <div class="loader" id="manualLoader">
+      <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+      <span>Evaluating summary quality...</span>
+    </div>
+    <div class="err" id="manualErr"></div>
+    <div id="manualResults" style="margin-top:14px"></div>
+  </div>
+
+  <!-- TAB 2: Auto pipeline -->
+  <div class="tab-panel" id="panel-auto">
+    <div class="card">
+      <div class="card-title">Auto pipeline — analyze + score in one step</div>
+      <p style="font-size:13px;color:#64748b;margin-bottom:12px;line-height:1.6">
+        Paste any text. The system will generate a summary using the NLP pipeline,
+        then immediately score that summary against the source. No manual input needed.
+      </p>
+      <textarea id="autoText" rows="6" placeholder="Paste any document to analyze and score..."></textarea>
+      <div style="margin-top:8px;margin-bottom:10px">
+        <span style="font-size:12px;color:#94a3b8">Examples: </span>
+        <span class="chip" onclick="loadAuto('news')">News</span>
+        <span class="chip" onclick="loadAuto('legal')">Legal</span>
+        <span class="chip" onclick="loadAuto('fraud')">Fraud case</span>
+      </div>
+      <button class="btn btn-primary" id="autoBtn" onclick="runAuto()">Analyze and score</button>
+    </div>
+    <div class="loader" id="autoLoader">
+      <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+      <span id="autoMsg">Generating summary...</span>
+    </div>
+    <div class="err" id="autoErr"></div>
+    <div id="autoResults" style="margin-top:14px"></div>
+  </div>
+</div>
+
+<script>
+const API = 'http://localhost:8000';
+
+const EX = {
+  news: {
+    source: "Apple Inc. reported record quarterly revenue of $123.9 billion in Q1 2024, driven by strong iPhone 15 sales in China and India. CEO Tim Cook praised the company's performance in emerging markets but warned that supply chain disruptions in Taiwan could impact next quarter's output.",
+    summary: "Apple achieved record Q1 2024 revenue of $123.9 billion, with iPhone 15 driving growth in China and India, though CEO Tim Cook flagged potential supply chain risks in Taiwan."
+  },
+  legal: {
+    source: "This Agreement shall be governed by the laws of the State of New York. The parties agree to submit to binding arbitration in New York County. The Company shall indemnify and hold harmless Employee from any claims arising from acts performed in good faith within the scope of employment.",
+    summary: "This agreement is governed by New York law, requires arbitration in New York County, and protects employees from claims related to good-faith actions within their job scope."
+  },
+  good: {
+    source: "Goldman Sachs raised its 12-month price target for Microsoft from $420 to $500, citing Azure cloud growth of 28% YoY and robust enterprise AI adoption. Analyst Sarah Chen noted that Copilot integration has accelerated deal cycles by roughly 15%.",
+    summary: "Goldman Sachs increased its Microsoft price target to $500 from $420, driven by 28% Azure growth and enterprise AI adoption. Analyst Sarah Chen highlighted that Copilot has sped up deal cycles by 15%."
+  },
+  poor: {
+    source: "Goldman Sachs raised its 12-month price target for Microsoft from $420 to $500, citing Azure cloud growth of 28% YoY and robust enterprise AI adoption. Analyst Sarah Chen noted that Copilot integration has accelerated deal cycles by roughly 15%.",
+    summary: "Microsoft is a big tech company that makes software and cloud services. They are doing well in the market."
+  }
+};
+
+const AUTO_EX = {
+  news: "Apple Inc. reported record quarterly revenue of $123.9 billion in Q1 2024, driven by strong iPhone 15 sales in China and India. CEO Tim Cook praised the company's performance in emerging markets but warned that supply chain disruptions in Taiwan could impact next quarter's output.",
+  legal: "This Agreement shall be governed by the laws of the State of New York. The parties agree to submit to binding arbitration in New York County. The Company shall indemnify and hold harmless Employee from any claims arising from acts performed in good faith within the scope of employment.",
+  fraud: "Alexander Vance stole $750,000 from Citywide Venture Partners by sending fraudulent emails claiming a digital asset investment opportunity. He directed a wire transfer to his account AV Digital Holdings on January 10, 2026, then converted $700,000 to Tether cryptocurrency on January 12 to avoid tracing. Detective Sarah Jenkins filed a criminal complaint on February 15, 2026."
+};
+
+const autoMsgs = ['Generating summary...','Running NLP pipeline...','Scoring summary quality...','Building report...'];
+let ami = 0, amt = null;
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach((t,i) => {
+    t.classList.toggle('active', ['manual','auto'][i] === tab);
+  });
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById(`panel-${tab}`).classList.add('active');
+}
+
+function loadEx(k) {
+  document.getElementById('sourceText').value  = EX[k].source;
+  document.getElementById('summaryText').value = EX[k].summary;
+}
+
+function loadAuto(k) {
+  document.getElementById('autoText').value = AUTO_EX[k];
+}
+
+function clearManual() {
+  document.getElementById('sourceText').value  = '';
+  document.getElementById('summaryText').value = '';
+  document.getElementById('manualResults').innerHTML = '';
+  document.getElementById('manualErr').style.display = 'none';
+}
+
+function verdictClass(v) {
+  return {excellent:'verdict-excellent',good:'verdict-good',acceptable:'verdict-acceptable',poor:'verdict-poor',error:'verdict-error'}[v]||'verdict-error';
+}
+
+function metricColor(v) {
+  return v >= 0.85 ? '#059669' : v >= 0.70 ? '#0891b2' : v >= 0.55 ? '#d97706' : '#dc2626';
+}
+
+function renderScore(d, container) {
+  const f1Pct   = Math.round((d.f1||0)*100);
+  const prPct   = Math.round((d.precision||0)*100);
+  const rcPct   = Math.round((d.recall||0)*100);
+  const vCls    = verdictClass(d.verdict);
+  const scores  = d.scores || {};
+
+  const subScores = [
+    {label:'Factual accuracy', key:'factual_accuracy'},
+    {label:'Completeness',     key:'completeness'},
+    {label:'Conciseness',      key:'conciseness'},
+    {label:'Fluency',          key:'fluency'},
+  ].map(s => {
+    const val = scores[s.key] || 0;
+    const col = metricColor(val);
+    return `<div class="sub-box">
+      <div class="sub-label">${s.label}</div>
+      <div class="sub-val" style="color:${col}">${Math.round(val*100)}%</div>
+      <div class="sub-bar"><div class="sub-fill" style="width:${Math.round(val*100)}%;background:${col}"></div></div>
+    </div>`;
+  }).join('');
+
+  const hallRisk = scores.hallucination_risk || 0;
+  const hallCol  = hallRisk < 0.2 ? '#059669' : hallRisk < 0.5 ? '#d97706' : '#dc2626';
+
+  const cov = d.coverage || {};
+  const covHtml = `
+    <div class="coverage-grid">
+      <div class="cov-box cov-covered">
+        <div class="cov-title">✅ Covered (${(cov.covered_points||[]).length})</div>
+        ${(cov.covered_points||[]).length
+          ? (cov.covered_points).map(p=>`<div class="cov-item">${p}</div>`).join('')
+          : '<div class="cov-empty">None identified</div>'}
+      </div>
+      <div class="cov-box cov-missed">
+        <div class="cov-title">⚠ Missed (${(cov.missed_points||[]).length})</div>
+        ${(cov.missed_points||[]).length
+          ? (cov.missed_points).map(p=>`<div class="cov-item">${p}</div>`).join('')
+          : '<div class="cov-empty">Nothing missed</div>'}
+      </div>
+      <div class="cov-box cov-added">
+        <div class="cov-title">🚨 Added/hallucinated (${(cov.added_points||[]).length})</div>
+        ${(cov.added_points||[]).length
+          ? (cov.added_points).map(p=>`<div class="cov-item">${p}</div>`).join('')
+          : '<div class="cov-empty">No hallucinations detected</div>'}
+      </div>
+    </div>`;
+
+  document.getElementById(container).innerHTML = `
+    <div class="card">
+      <div class="card-title">Overall quality score</div>
+      <div class="score-hero">
+        <div class="score-circle ${vCls}">
+          <div class="score-n">${f1Pct}</div>
+          <div class="score-l">F1 score</div>
+        </div>
+        <div>
+          <div style="font-size:20px;font-weight:700;text-transform:uppercase;color:inherit;margin-bottom:4px">${d.verdict||'—'}</div>
+          <div style="font-size:13px;color:#64748b">BERTScore-equivalent evaluation</div>
+          <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+            <span style="font-size:12px;font-weight:600;padding:3px 10px;border-radius:20px;background:#f1f5f9;color:#374151">
+              Hallucination risk: <span style="color:${hallCol}">${Math.round(hallRisk*100)}%</span>
+            </span>
+            <span style="font-size:12px;font-weight:600;padding:3px 10px;border-radius:20px;background:#f1f5f9;color:#374151">
+              Compression: ${Math.round((d.compression_ratio||0)*100)}%
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="metrics-grid">
+        <div class="metric-box">
+          <div class="metric-n" style="color:${metricColor(d.precision||0)}">${prPct}%</div>
+          <div class="metric-l">Precision</div>
+          <div class="metric-bar"><div class="metric-fill" style="width:${prPct}%;background:${metricColor(d.precision||0)}"></div></div>
+          <div style="font-size:11px;color:#94a3b8;margin-top:4px">Summary supported by source</div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-n" style="color:${metricColor(d.recall||0)}">${rcPct}%</div>
+          <div class="metric-l">Recall</div>
+          <div class="metric-bar"><div class="metric-fill" style="width:${rcPct}%;background:${metricColor(d.recall||0)}"></div></div>
+          <div style="font-size:11px;color:#94a3b8;margin-top:4px">Source key points covered</div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-n" style="color:${metricColor(d.f1||0)}">${f1Pct}%</div>
+          <div class="metric-l">F1 score</div>
+          <div class="metric-bar"><div class="metric-fill" style="width:${f1Pct}%;background:${metricColor(d.f1||0)}"></div></div>
+          <div style="font-size:11px;color:#94a3b8;margin-top:4px">Harmonic mean</div>
+        </div>
+      </div>
+
+      <div class="sub-scores">${subScores}</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Coverage analysis</div>
+      ${covHtml}
+    </div>
+
+    <div class="card">
+      <div class="card-title">Feedback and improvement</div>
+      <div class="feedback-box">${d.feedback||'—'}</div>
+      ${d.improvement ? `<div class="improvement-box">💡 ${d.improvement}</div>` : ''}
+      <div class="meta-row">
+        <span>Source: <span>${d.source_length||0} words</span></span>
+        <span>Summary: <span>${d.summary_length||0} words</span></span>
+        <span>Method: <span>${d.method||'—'}</span></span>
+      </div>
+    </div>`;
+}
+
+async function scoreManual() {
+  const source  = document.getElementById('sourceText').value.trim();
+  const summary = document.getElementById('summaryText').value.trim();
+  if (!source || !summary) { showErr('manualErr', 'Please enter both source and summary.'); return; }
+
+  const btn = document.getElementById('scoreBtn');
+  btn.disabled = true;
+  document.getElementById('manualLoader').style.display = 'flex';
+  document.getElementById('manualResults').innerHTML = '';
+  document.getElementById('manualErr').style.display  = 'none';
+
+  try {
+    const resp = await fetch(`${API}/summary/score`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: JSON.stringify({ source, summary }) })
+    });
+    const d = await resp.json();
+    if (!resp.ok) throw new Error(d.detail || resp.statusText);
+    renderScore(d, 'manualResults');
+  } catch(e) {
+    showErr('manualErr', e.message.includes('fetch')
+      ? 'Cannot reach backend. Is the server running on port 8000?'
+      : e.message);
+  } finally {
+    btn.disabled = false;
+    document.getElementById('manualLoader').style.display = 'none';
+  }
+}
+
+async function runAuto() {
+  const text = document.getElementById('autoText').value.trim();
+  if (!text || text.length < 20) { showErr('autoErr', 'Please enter at least 20 characters.'); return; }
+
+  const btn = document.getElementById('autoBtn');
+  btn.disabled = true;
+  document.getElementById('autoLoader').style.display = 'flex';
+  document.getElementById('autoResults').innerHTML = '';
+  document.getElementById('autoErr').style.display  = 'none';
+
+  ami = 0;
+  document.getElementById('autoMsg').textContent = autoMsgs[0];
+  amt = setInterval(() => {
+    ami = (ami+1) % autoMsgs.length;
+    document.getElementById('autoMsg').textContent = autoMsgs[ami];
+  }, 1800);
+
+  try {
+    const resp = await fetch(`${API}/summary/score/auto`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    });
+    const d = await resp.json();
+    if (!resp.ok) throw new Error(d.detail || resp.statusText);
+
+    const score = d.summary_score;
+    if (!score) throw new Error('No score returned');
+
+    // Show the generated summary first
+    document.getElementById('autoResults').innerHTML = `
+      <div class="card">
+        <div class="card-title">Generated summary</div>
+        <div style="font-size:14px;line-height:1.8;color:#374151;background:#f8fafc;padding:12px;border-radius:8px;border-left:4px solid #6366f1">${d.summary||'—'}</div>
+      </div>`;
+
+    renderScore(score, 'autoResults');
+  } catch(e) {
+    showErr('autoErr', e.message.includes('fetch')
+      ? 'Cannot reach backend. Is the server running on port 8000?'
+      : e.message);
+  } finally {
+    btn.disabled = false;
+    clearInterval(amt);
+    document.getElementById('autoLoader').style.display = 'none';
+  }
+}
+
+function showErr(id, msg) {
+  const d = document.getElementById(id);
+  d.textContent = 'Error: ' + msg;
+  d.style.display = 'block';
+}
+</script>
+</body>
+</html>

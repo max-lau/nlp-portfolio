@@ -1,3 +1,4 @@
+from backend.demo1.multilingual import analyze_multilingual, detect_language, SUPPORTED_LANGUAGES
 from backend.demo1.summary_scorer import score_summary, batch_score_summaries
 from backend.demo1.entity_confidence import score_entities, get_entity_summary
 from backend.demo1.entity_linker import find_linked_entities, link_documents_by_entity
@@ -401,6 +402,28 @@ def summary_score_auto(body: TextInput):
     score          = score_summary(body.text, summary)
     result["summary_score"] = score
     return result
+
+@app.get("/languages")
+def languages():
+    """List all supported languages."""
+    return {"languages": SUPPORTED_LANGUAGES}
+
+@app.post("/analyze/multilingual")
+def analyze_multilingual_endpoint(
+    body: TextInput,
+    lang: str = Query("auto", description="Language code: en, zh, es, fr, de, ja, ar, pt, auto")
+):
+    """Analyze text in any supported language."""
+    if not body.text or len(body.text.strip()) < 10:
+        raise HTTPException(status_code=400, detail="Text too short")
+    return analyze_multilingual(body.text, lang)
+
+@app.post("/detect/language")
+def detect_language_endpoint(body: TextInput):
+    """Detect the language of any text."""
+    if not body.text or len(body.text.strip()) < 5:
+        raise HTTPException(status_code=400, detail="Text too short")
+    return detect_language(body.text)
 
 @app.get("/stats")
 def stats():

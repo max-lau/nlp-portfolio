@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Multilingual NLP Analyzer</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f1f5f9; color: #1a1a1a; }
+    .nav { background: #0f172a; padding: 0 2rem; display: flex; align-items: center; gap: 1.5rem; height: 56px; }
+    .nav-brand { font-size: 15px; font-weight: 700; color: #fff; }
+    .nav-sub { font-size: 12px; color: #64748b; }
+    .nav-links { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+    .nav-link { font-size: 12px; font-weight: 500; padding: 5px 12px; border-radius: 6px; color: #94a3b8; cursor: pointer; border: none; background: transparent; text-decoration: none; }
+    .nav-link:hover { background: #1e293b; color: #fff; }
+    .nav-link.active { background: #1e293b; color: #fff; }
+    .page { padding: 1.5rem 2rem; max-width: 900px; margin: 0 auto; }
+    .page-title { font-size: 22px; font-weight: 700; color: #0f172a; margin-bottom: 4px; }
+    .page-sub { font-size: 13px; color: #64748b; margin-bottom: 1rem; }
+    .badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; margin-right: 6px; margin-bottom: 1rem; }
+    .b1{background:#ede9fe;color:#5b21b6}
+    .b2{background:#d1fae5;color:#065f46}
+    .b3{background:#fef3c7;color:#92400e}
+
+    /* Language selector */
+    .lang-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 1.25rem; }
+    .lang-btn { font-size: 13px; font-weight: 500; padding: 7px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #fff; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 6px; }
+    .lang-btn:hover { border-color: #6366f1; color: #6366f1; }
+    .lang-btn.active { background: #6366f1; color: #fff; border-color: #6366f1; }
+    .lang-btn.auto { background: #0f172a; color: #fff; border-color: #0f172a; }
+    .lang-btn.auto.active { background: #0f172a; }
+
+    textarea { width: 100%; min-height: 140px; font-size: 14px; padding: 14px; border: 1px solid #e2e8f0; border-radius: 10px; resize: vertical; font-family: inherit; line-height: 1.6; background: #fff; color: #374151; }
+    textarea:focus { outline: none; border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.1); }
+
+    .examples { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0 12px; align-items: center; }
+    .chip { font-size: 12px; padding: 4px 12px; border-radius: 20px; border: 1px solid #e2e8f0; cursor: pointer; background: #fff; color: #64748b; }
+    .chip:hover { border-color: #6366f1; color: #6366f1; }
+
+    .btn { font-size: 13px; font-weight: 600; padding: 10px 24px; border-radius: 8px; cursor: pointer; border: none; }
+    .btn-primary { background: #6366f1; color: #fff; }
+    .btn-primary:hover { background: #4f46e5; }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-secondary { background: #fff; color: #374151; border: 1px solid #e2e8f0; }
+    .btn-secondary:hover { background: #f8fafc; }
+
+    .loader { display: none; align-items: center; gap: 10px; padding: 1rem 0; color: #64748b; font-size: 14px; }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: #6366f1; animation: bounce 1.2s infinite; }
+    .dot:nth-child(2){animation-delay:0.2s} .dot:nth-child(3){animation-delay:0.4s}
+    @keyframes bounce{0%,80%,100%{transform:scale(0.6);opacity:0.4}40%{transform:scale(1);opacity:1}}
+    .err { background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px; padding: 12px; font-size: 13px; color: #b91c1c; display: none; margin-top: 10px; }
+
+    .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem; margin-bottom: 14px; }
+    .card-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #94a3b8; margin-bottom: 12px; }
+
+    /* Language detection badge */
+    .lang-detected { display: inline-flex; align-items: center; gap: 8px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 14px; margin-bottom: 14px; }
+    .lang-flag { font-size: 20px; }
+    .lang-name { font-size: 14px; font-weight: 700; color: #0f172a; }
+    .lang-conf { font-size: 12px; color: #94a3b8; }
+    .lang-model { font-size: 11px; padding: 2px 8px; border-radius: 20px; background: #ede9fe; color: #5b21b6; font-weight: 600; }
+
+    /* Sentiment */
+    .sentiment-row { display: flex; align-items: center; gap: 12px; }
+    .s-pill { padding: 5px 16px; border-radius: 20px; font-weight: 600; font-size: 14px; text-transform: capitalize; }
+    .s-positive{background:#d1fae5;color:#065f46}
+    .s-negative{background:#fee2e2;color:#991b1b}
+    .s-neutral {background:#f3f4f6;color:#374151}
+    .s-mixed   {background:#fef3c7;color:#92400e}
+    .bar-track { flex:1; height:8px; background:#f3f4f6; border-radius:4px; overflow:hidden; }
+    .bar-fill  { height:100%; border-radius:4px; transition:width 0.7s ease; }
+
+    /* Entities */
+    .ent-wrap { display: flex; flex-wrap: wrap; gap: 8px; }
+    .ent { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; padding: 4px 10px; border-radius: 6px; }
+    .ent-lbl { font-size: 10px; font-weight: 700; opacity: 0.65; }
+    .PERSON{background:#ede9fe;color:#5b21b6}
+    .ORG{background:#d1fae5;color:#065f46}
+    .GPE,.LOC{background:#dbeafe;color:#1e40af}
+    .DATE,.TIME{background:#fef3c7;color:#92400e}
+    .MONEY,.PERCENT{background:#dcfce7;color:#166534}
+    .LAW{background:#fee2e2;color:#991b1b}
+    .OTHER{background:#f3f4f6;color:#374151}
+
+    /* Keywords */
+    .kw-wrap { display: flex; flex-wrap: wrap; gap: 6px; }
+    .kw { font-size: 13px; padding: 3px 12px; border-radius: 20px; background: #f3f4f6; color: #374151; border: 1px solid #e2e8f0; }
+    .kw.high { background: #ede9fe; color: #5b21b6; border-color: #c4b5fd; font-weight: 600; }
+
+    /* Translation box */
+    .translation-box { font-size: 14px; line-height: 1.8; color: #374151; padding: 14px 16px; background: #f0f9ff; border-radius: 8px; border-left: 4px solid #0891b2; }
+    .native-phrases { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .native-phrase { font-size: 13px; padding: 3px 12px; border-radius: 20px; background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+
+    /* Stats */
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px,1fr)); gap: 8px; }
+    .stat { background: #f9fafb; border-radius: 8px; padding: 10px; text-align: center; }
+    .stat-n { font-size: 20px; font-weight: 700; color: #0f172a; }
+    .stat-l { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+
+    /* Language support grid */
+    .support-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px,1fr)); gap: 8px; }
+    .support-item { background: #f9fafb; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; display: flex; align-items: center; gap: 8px; }
+    .support-flag { font-size: 18px; }
+    .support-name { font-size: 13px; font-weight: 600; color: #0f172a; }
+    .support-model { font-size: 11px; color: #94a3b8; }
+  </style>
+</head>
+<body>
+
+<nav class="nav">
+  <span class="nav-brand">NLP Portfolio</span>
+  <span class="nav-sub">Multilingual NLP</span>
+  <div class="nav-links">
+    <a class="nav-link" href="index.html">Text Analyzer</a>
+    <a class="nav-link" href="batch.html">Batch</a>
+    <a class="nav-link" href="timeline.html">Timeline</a>
+    <a class="nav-link" href="dashboard.html">Dashboard</a>
+    <a class="nav-link" href="insights.html">Insights</a>
+    <a class="nav-link" href="scorer.html">Scorer</a>
+    <a class="nav-link active" href="multilingual.html">Multilingual</a>
+  </div>
+</nav>
+
+<div class="page">
+  <div class="page-title">Multilingual NLP analyzer</div>
+  <p class="page-sub">Sentiment, entities, and key phrases in 8 languages — auto-detection included</p>
+  <span class="badge b1">8 languages</span>
+  <span class="badge b2">Auto-detection</span>
+  <span class="badge b3">spaCy + Claude</span>
+
+  <!-- Language selector -->
+  <div class="card">
+    <div class="card-title">Select language</div>
+    <div class="lang-grid" id="langGrid">
+      <button class="lang-btn auto active" onclick="selectLang('auto')" id="lang-auto">🌐 Auto-detect</button>
+      <button class="lang-btn" onclick="selectLang('en')"  id="lang-en">🇺🇸 English</button>
+      <button class="lang-btn" onclick="selectLang('zh')"  id="lang-zh">🇨🇳 Chinese</button>
+      <button class="lang-btn" onclick="selectLang('es')"  id="lang-es">🇪🇸 Spanish</button>
+      <button class="lang-btn" onclick="selectLang('fr')"  id="lang-fr">🇫🇷 French</button>
+      <button class="lang-btn" onclick="selectLang('de')"  id="lang-de">🇩🇪 German</button>
+      <button class="lang-btn" onclick="selectLang('ja')"  id="lang-ja">🇯🇵 Japanese</button>
+      <button class="lang-btn" onclick="selectLang('ar')"  id="lang-ar">🇸🇦 Arabic</button>
+      <button class="lang-btn" onclick="selectLang('pt')"  id="lang-pt">🇧🇷 Portuguese</button>
+    </div>
+  </div>
+
+  <textarea id="txt" placeholder="Paste text in any language..."></textarea>
+
+  <div class="examples">
+    <span style="font-size:12px;color:#94a3b8">Examples:</span>
+    <span class="chip" onclick="loadEx('zh')">🇨🇳 Chinese news</span>
+    <span class="chip" onclick="loadEx('es')">🇪🇸 Spanish legal</span>
+    <span class="chip" onclick="loadEx('fr')">🇫🇷 French business</span>
+    <span class="chip" onclick="loadEx('de')">🇩🇪 German contract</span>
+    <span class="chip" onclick="loadEx('ja')">🇯🇵 Japanese</span>
+    <span class="chip" onclick="loadEx('ar')">🇸🇦 Arabic</span>
+    <span class="chip" onclick="loadEx('mixed')">🌐 Mixed languages</span>
+  </div>
+
+  <div style="display:flex;gap:10px;margin-bottom:1.5rem">
+    <button class="btn btn-primary" id="analyzeBtn" onclick="analyze()">Analyze text</button>
+    <button class="btn btn-secondary" onclick="clearAll()">Clear</button>
+  </div>
+
+  <div class="loader" id="loader">
+    <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+    <span id="lmsg">Detecting language...</span>
+  </div>
+  <div class="err" id="err"></div>
+  <div id="results"></div>
+
+  <!-- Supported languages reference -->
+  <div class="card" style="margin-top:1rem">
+    <div class="card-title">Supported languages</div>
+    <div class="support-grid">
+      <div class="support-item"><span class="support-flag">🇺🇸</span><div><div class="support-name">English</div><div class="support-model">spaCy + Claude</div></div></div>
+      <div class="support-item"><span class="support-flag">🇨🇳</span><div><div class="support-name">Chinese</div><div class="support-model">Claude (ZH/TW/HK)</div></div></div>
+      <div class="support-item"><span class="support-flag">🇪🇸</span><div><div class="support-name">Spanish</div><div class="support-model">spaCy + Claude</div></div></div>
+      <div class="support-item"><span class="support-flag">🇫🇷</span><div><div class="support-name">French</div><div class="support-model">spaCy + Claude</div></div></div>
+      <div class="support-item"><span class="support-flag">🇩🇪</span><div><div class="support-name">German</div><div class="support-model">Claude</div></div></div>
+      <div class="support-item"><span class="support-flag">🇯🇵</span><div><div class="support-name">Japanese</div><div class="support-model">Claude</div></div></div>
+      <div class="support-item"><span class="support-flag">🇸🇦</span><div><div class="support-name">Arabic</div><div class="support-model">Claude</div></div></div>
+      <div class="support-item"><span class="support-flag">🇧🇷</span><div><div class="support-name">Portuguese</div><div class="support-model">Claude</div></div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = 'http://localhost:8000';
+let selectedLang = 'auto';
+
+const EX = {
+  zh: '苹果公司今日公布了创纪录的季度营收1239亿美元，主要由iPhone 15在中国和印度市场的强劲销售驱动。首席执行官蒂姆·库克对公司在新兴市场的表现给予高度评价，但同时警告台湾供应链中断可能影响下季度产量。',
+  es: 'El Tribunal Supremo de España ha dictaminado que el contrato de servicios entre Tecnología Avanzada S.A. y el Gobierno de Madrid es nulo de pleno derecho debido a irregularidades en el proceso de licitación. La empresa deberá devolver 45 millones de euros al erario público.',
+  fr: 'Goldman Sachs a relevé son objectif de cours sur Microsoft de 420 à 500 dollars, citant une croissance de 28% sur un an pour Azure et une adoption robuste de l\'IA en entreprise. L\'analyste Sarah Chen a noté que l\'intégration de Copilot a accéléré les cycles de vente d\'environ 15%.',
+  de: 'Der Bundesgerichtshof hat entschieden, dass der Vertrag zwischen der Deutschen Bank AG und der Müller GmbH wegen wesentlicher Vertragsverletzung nichtig ist. Die Deutsche Bank muss Schadensersatz in Höhe von 12 Millionen Euro leisten.',
+  ja: 'ソフトバンクグループは、人工知能スタートアップへの500億円の投資を発表しました。孫正義会長は、この投資が日本のAI産業の発展に大きく貢献すると述べ、5年以内に1000億円規模の収益を見込んでいます。',
+  ar: 'أعلنت شركة أرامكو السعودية عن أرباح فصلية قياسية بلغت 39 مليار دولار، مدفوعة بارتفاع أسعار النفط والطلب المتزايد من الأسواق الآسيوية. وأكد الرئيس التنفيذي أمين الناصر أن الشركة ستواصل الاستثمار في الطاقة المتجددة.',
+  mixed: '苹果公司 (Apple Inc.) reported Q1 revenue of $123.9 billion. El CEO Tim Cook stated: "我们对新兴市场的表现非常满意." Les analystes de Goldman Sachs ont relevé leur objectif.'
+};
+
+function selectLang(lang) {
+  selectedLang = lang;
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(`lang-${lang}`).classList.add('active');
+}
+
+function loadEx(k) {
+  document.getElementById('txt').value = EX[k];
+  // Auto-select matching language
+  const map = {zh:'zh',es:'es',fr:'fr',de:'de',ja:'ja',ar:'ar',mixed:'auto'};
+  if (map[k]) selectLang(map[k]);
+}
+
+function clearAll() {
+  document.getElementById('txt').value = '';
+  document.getElementById('results').innerHTML = '';
+  document.getElementById('err').style.display = 'none';
+  selectLang('auto');
+}
+
+function sentColor(l) {
+  return {positive:'#10b981',negative:'#ef4444',neutral:'#9ca3af',mixed:'#f59e0b'}[l]||'#9ca3af';
+}
+
+const lmsgs = ['Detecting language...','Running NLP pipeline...','Extracting entities...','Translating...'];
+let mi = 0, mt = null;
+
+async function analyze() {
+  const text = document.getElementById('txt').value.trim();
+  if (!text || text.length < 5) { showErr('Please enter some text.'); return; }
+
+  const btn = document.getElementById('analyzeBtn');
+  btn.disabled = true;
+  document.getElementById('loader').style.display = 'flex';
+  document.getElementById('results').innerHTML = '';
+  document.getElementById('err').style.display  = 'none';
+
+  mi = 0;
+  document.getElementById('lmsg').textContent = lmsgs[0];
+  mt = setInterval(() => {
+    mi = (mi+1) % lmsgs.length;
+    document.getElementById('lmsg').textContent = lmsgs[mi];
+  }, 1500);
+
+  try {
+    const url  = `${API}/analyze/multilingual?lang=${selectedLang}`;
+    const resp = await fetch(url, {
+      method:  'POST',
+      headers: {'Content-Type':'application/json'},
+      body:    JSON.stringify({text})
+    });
+    const d = await resp.json();
+    if (!resp.ok) throw new Error(d.detail || resp.statusText);
+    if (d.error) throw new Error(d.error);
+    render(d, text);
+  } catch(e) {
+    showErr(e.message.includes('fetch')
+      ? 'Cannot reach backend. Make sure server is running on port 8000.'
+      : e.message);
+  } finally {
+    btn.disabled = false;
+    clearInterval(mt);
+    document.getElementById('loader').style.display = 'none';
+  }
+}
+
+function showErr(msg) {
+  const d = document.getElementById('err');
+  d.textContent = 'Error: ' + msg;
+  d.style.display = 'block';
+}
+
+function render(d, originalText) {
+  const lang  = d.language || {};
+  const sent  = d.sentiment || {};
+  const sPct  = Math.round((sent.score||0)*100);
+  const sCol  = sentColor(sent.label);
+
+  const langHtml = `
+    <div class="lang-detected">
+      <span class="lang-flag">${lang.flag||'🌐'}</span>
+      <span class="lang-name">${lang.name||'Unknown'}</span>
+      <span class="lang-conf">${Math.round((lang.confidence||0)*100)}% confident</span>
+      <span class="lang-model">${lang.model||'claude'}</span>
+    </div>`;
+
+  const toneHtml = (d.tone||[]).map(t =>
+    `<span style="font-size:13px;padding:3px 12px;border-radius:20px;background:#f3f4f6;color:#374151">${t}</span>`
+  ).join('');
+
+  const entHtml = (d.entities||[]).map(e =>
+    `<span class="ent ${e.type||'OTHER'}">${e.text}<span class="ent-lbl">${e.type}</span></span>`
+  ).join('') || '<span style="font-size:13px;color:#94a3b8">None detected</span>';
+
+  const kwHtml = (d.keywords||[]).map(k =>
+    `<span class="kw ${k.importance==='high'?'high':''}">${k.word}</span>`
+  ).join('');
+
+  const nativeHtml = (d.key_phrases_native||[]).map(p =>
+    `<span class="native-phrase">${p}</span>`
+  ).join('');
+
+  const wc    = (originalText||'').trim().split(/\s+/).filter(Boolean).length;
+  const sents = (originalText||'').match(/[.!?。！？]+/g)||[];
+
+  document.getElementById('results').innerHTML = `
+    ${langHtml}
+
+    <div class="card">
+      <div class="card-title">Sentiment analysis</div>
+      <div class="sentiment-row">
+        <span class="s-pill s-${sent.label}">${sent.label}</span>
+        <div class="bar-track"><div class="bar-fill" style="width:${sPct}%;background:${sCol}"></div></div>
+        <span style="font-size:13px;font-weight:700;color:#6b7280;min-width:38px;text-align:right">${sPct}%</span>
+      </div>
+      <p style="font-size:13px;color:#6b7280;margin-top:8px;line-height:1.6">${sent.explanation||''}</p>
+      <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;align-items:center">
+        <span style="font-size:11px;font-weight:700;color:#94a3b8">TONE:</span>${toneHtml}
+      </div>
+    </div>
+
+    ${d.translation ? `
+    <div class="card">
+      <div class="card-title">English translation</div>
+      <div class="translation-box">${d.translation}</div>
+      ${nativeHtml ? `
+        <div style="margin-top:10px">
+          <div style="font-size:11px;font-weight:700;color:#94a3b8;margin-bottom:6px">KEY PHRASES (ORIGINAL LANGUAGE)</div>
+          <div class="native-phrases">${nativeHtml}</div>
+        </div>` : ''}
+    </div>` : ''}
+
+    <div class="card">
+      <div class="card-title">Named entities</div>
+      <div class="ent-wrap">${entHtml}</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Key phrases</div>
+      <div class="kw-wrap">${kwHtml}</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Summary</div>
+      <p style="font-size:14px;line-height:1.8;color:#374151">${d.summary||'—'}</p>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Document statistics</div>
+      <div class="stats-grid">
+        <div class="stat"><div class="stat-n">${d.word_count||wc}</div><div class="stat-l">words</div></div>
+        <div class="stat"><div class="stat-n">${sents.length||1}</div><div class="stat-l">sentences</div></div>
+        <div class="stat"><div class="stat-n">${(d.entities||[]).length}</div><div class="stat-l">entities</div></div>
+        <div class="stat"><div class="stat-n">${lang.flag||'🌐'}</div><div class="stat-l">${lang.name||'unknown'}</div></div>
+      </div>
+    </div>`;
+}
+</script>
+</body>
+</html>

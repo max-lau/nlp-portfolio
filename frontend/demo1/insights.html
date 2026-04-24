@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document Insights — Entity Linking & Contradiction Detection</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f1f5f9; color: #1a1a1a; }
+    .nav { background: #0f172a; padding: 0 2rem; display: flex; align-items: center; gap: 1.5rem; height: 56px; }
+    .nav-brand { font-size: 15px; font-weight: 700; color: #fff; }
+    .nav-sub { font-size: 12px; color: #64748b; }
+    .nav-links { margin-left: auto; display: flex; gap: 8px; }
+    .nav-link { font-size: 12px; font-weight: 500; padding: 5px 12px; border-radius: 6px; color: #94a3b8; cursor: pointer; border: none; background: transparent; text-decoration: none; }
+    .nav-link:hover { background: #1e293b; color: #fff; }
+    .nav-link.active { background: #1e293b; color: #fff; }
+    .page { padding: 1.5rem 2rem; max-width: 960px; margin: 0 auto; }
+    .page-title { font-size: 22px; font-weight: 700; color: #0f172a; margin-bottom: 4px; }
+    .page-sub { font-size: 13px; color: #64748b; margin-bottom: 1.5rem; }
+
+    /* Tabs */
+    .tabs { display: flex; gap: 4px; margin-bottom: 1.5rem; background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 4px; width: fit-content; }
+    .tab { font-size: 13px; font-weight: 600; padding: 7px 18px; border-radius: 7px; cursor: pointer; color: #64748b; border: none; background: transparent; transition: all 0.15s; }
+    .tab:hover { color: #374151; }
+    .tab.active { background: #0f172a; color: #fff; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* Cards */
+    .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem; margin-bottom: 14px; }
+    .card-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #94a3b8; margin-bottom: 12px; }
+
+    /* Entity search */
+    .search-row { display: flex; gap: 8px; margin-bottom: 1rem; }
+    .search-input { flex: 1; font-size: 14px; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; background: #fff; color: #374151; }
+    .search-input:focus { outline: none; border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.1); }
+    .search-btn { font-size: 13px; font-weight: 600; padding: 10px 20px; border-radius: 8px; border: none; background: #6366f1; color: #fff; cursor: pointer; white-space: nowrap; }
+    .search-btn:hover { background: #4f46e5; }
+    .search-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .quick-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 1rem; align-items: center; }
+    .qchip { font-size: 12px; padding: 4px 12px; border-radius: 20px; border: 1px solid #e2e8f0; background: #fff; color: #64748b; cursor: pointer; }
+    .qchip:hover { border-color: #6366f1; color: #6366f1; }
+
+    /* Match cards */
+    .match-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 14px; margin-bottom: 8px; display: flex; gap: 12px; align-items: flex-start; }
+    .match-sim { font-size: 13px; font-weight: 700; min-width: 48px; text-align: center; padding: 4px 0; border-radius: 6px; }
+    .sim-high { background: #d1fae5; color: #065f46; }
+    .sim-med  { background: #fef3c7; color: #92400e; }
+    .sim-low  { background: #f3f4f6; color: #374151; }
+    .match-info { flex: 1; }
+    .match-entity { font-size: 14px; font-weight: 600; color: #0f172a; margin-bottom: 2px; }
+    .match-preview { font-size: 12px; color: #64748b; line-height: 1.5; margin-bottom: 4px; }
+    .match-meta { display: flex; gap: 8px; flex-wrap: wrap; }
+    .ent-type { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 20px; background: #dbeafe; color: #1e40af; }
+    .sent-badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 20px; }
+    .sb-positive{background:#d1fae5;color:#065f46}
+    .sb-negative{background:#fee2e2;color:#991b1b}
+    .sb-neutral {background:#f3f4f6;color:#374151}
+    .sb-mixed   {background:#fef3c7;color:#92400e}
+    .doc-id { font-size: 11px; color: #94a3b8; }
+
+    /* Document pairs */
+    .pair-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; margin-bottom: 10px; }
+    .pair-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .pair-sim { font-size: 13px; font-weight: 700; padding: 3px 10px; border-radius: 20px; background: #ede9fe; color: #5b21b6; }
+    .pair-docs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px; }
+    .pair-doc { background: #fff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px; }
+    .pair-doc-label { font-size: 10px; font-weight: 700; color: #94a3b8; margin-bottom: 3px; }
+    .pair-doc-text { font-size: 12px; color: #374151; line-height: 1.5; }
+    .shared-ents { display: flex; flex-wrap: wrap; gap: 4px; }
+    .shared-ent { font-size: 11px; padding: 2px 8px; border-radius: 20px; background: #ede9fe; color: #5b21b6; font-weight: 500; }
+
+    /* Contradiction cards */
+    .contra-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem; margin-bottom: 12px; }
+    .contra-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
+    .contra-rel { font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 20px; }
+    .rel-same    { background: #fee2e2; color: #991b1b; }
+    .rel-related { background: #fef3c7; color: #92400e; }
+    .rel-conflict{ background: #fef2f2; color: #b91c1c; }
+    .rel-unrelated{background: #f3f4f6; color: #374151; }
+    .contra-summary { font-size: 13px; color: #64748b; margin-bottom: 12px; line-height: 1.6; }
+    .contra-docs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+    .contra-doc { background: #f8fafc; border-radius: 6px; padding: 8px 10px; border: 1px solid #e2e8f0; }
+    .contra-doc-label { font-size: 10px; font-weight: 700; color: #94a3b8; margin-bottom: 3px; }
+    .contra-doc-text { font-size: 12px; color: #374151; line-height: 1.5; }
+    .no-contra { font-size: 13px; color: #059669; font-weight: 600; padding: 6px 0; }
+
+    /* Contradiction item */
+    .contra-item { border: 1px solid #fecaca; border-radius: 8px; padding: 12px; margin-bottom: 8px; background: #fff5f5; }
+    .contra-item:last-child { margin-bottom: 0; }
+    .ci-header { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
+    .ci-type { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 20px; background: #fee2e2; color: #991b1b; text-transform: uppercase; }
+    .ci-sev  { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
+    .sev-high  { background: #7f1d1d; color: #fff; }
+    .sev-medium{ background: #fef3c7; color: #92400e; }
+    .sev-low   { background: #f3f4f6; color: #374151; }
+    .ci-entity { font-size: 13px; font-weight: 700; color: #0f172a; }
+    .ci-claims { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 8px 0; }
+    .ci-claim  { background: #fff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px; }
+    .ci-claim-label { font-size: 10px; font-weight: 700; color: #94a3b8; margin-bottom: 3px; }
+    .ci-claim-text  { font-size: 13px; color: #374151; line-height: 1.5; }
+    .ci-expl { font-size: 12px; color: #6b7280; font-style: italic; line-height: 1.5; }
+
+    /* Shared entities in contra */
+    .shared-section { margin-top: 8px; }
+    .shared-label { font-size: 11px; font-weight: 700; color: #94a3b8; margin-bottom: 4px; }
+
+    /* KPI row */
+    .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 1.25rem; }
+    .kpi { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px; }
+    .kpi-n { font-size: 28px; font-weight: 700; color: #0f172a; }
+    .kpi-l { font-size: 12px; color: #64748b; margin-top: 3px; }
+
+    /* Loader */
+    .loader { display: none; align-items: center; gap: 10px; padding: 1rem 0; color: #64748b; font-size: 14px; }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: #6366f1; animation: bounce 1.2s infinite; }
+    .dot:nth-child(2){animation-delay:0.2s} .dot:nth-child(3){animation-delay:0.4s}
+    @keyframes bounce{0%,80%,100%{transform:scale(0.6);opacity:0.4}40%{transform:scale(1);opacity:1}}
+    .empty { font-size: 14px; color: #94a3b8; padding: 2rem; text-align: center; background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; }
+    .scan-btn { font-size: 14px; font-weight: 600; padding: 11px 24px; border-radius: 8px; border: none; background: #dc2626; color: #fff; cursor: pointer; }
+    .scan-btn:hover { background: #b91c1c; }
+    .scan-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+
+<nav class="nav">
+  <span class="nav-brand">NLP Portfolio</span>
+  <span class="nav-sub">Document Insights</span>
+  <div class="nav-links">
+    <a class="nav-link" href="index.html">Text Analyzer</a>
+    <a class="nav-link" href="batch.html">Batch</a>
+    <a class="nav-link" href="timeline.html">Timeline</a>
+    <a class="nav-link" href="dashboard.html">Dashboard</a>
+    <a class="nav-link" href="review.html">Review Queue</a>
+    <a class="nav-link active" href="insights.html">Insights</a>
+  </div>
+</nav>
+
+<div class="page">
+  <div class="page-title">Document insights</div>
+  <p class="page-sub">Cross-document entity linking and contradiction detection powered by FAISS + sentence transformers</p>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('entity')">Entity linking</button>
+    <button class="tab" onclick="switchTab('docs')">Linked documents</button>
+    <button class="tab" onclick="switchTab('contra')">Contradiction scanner</button>
+  </div>
+
+  <!-- TAB 1: Entity linking -->
+  <div class="tab-panel active" id="panel-entity">
+    <div class="card">
+      <div class="card-title">Search for linked entities</div>
+      <p style="font-size:13px;color:#64748b;margin-bottom:12px;line-height:1.6">
+        Type any entity name to find semantically similar entities across all your stored documents.
+        For example, searching "Apple" may surface "Apple Inc.", "Tim Cook's company", "the tech giant".
+      </p>
+      <div class="search-row">
+        <input class="search-input" id="entityQuery"
+          placeholder="e.g. Alexander Vance, Goldman Sachs, New York..."
+          onkeydown="if(event.key==='Enter') searchEntity()">
+        <button class="search-btn" id="entityBtn" onclick="searchEntity()">Find linked entities</button>
+      </div>
+      <div class="quick-chips">
+        <span style="font-size:12px;color:#94a3b8">Quick search:</span>
+        <span class="qchip" onclick="quickSearch('Alexander Vance')">Alexander Vance</span>
+        <span class="qchip" onclick="quickSearch('Goldman Sachs')">Goldman Sachs</span>
+        <span class="qchip" onclick="quickSearch('New York')">New York</span>
+        <span class="qchip" onclick="quickSearch('Apple')">Apple</span>
+        <span class="qchip" onclick="quickSearch('fraud')">fraud</span>
+      </div>
+      <div class="loader" id="entityLoader">
+        <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+        <span>Searching with FAISS...</span>
+      </div>
+      <div id="entityResults"></div>
+    </div>
+  </div>
+
+  <!-- TAB 2: Linked documents -->
+  <div class="tab-panel" id="panel-docs">
+    <div class="kpi-row" id="docsKpi"></div>
+    <div class="loader" id="docsLoader">
+      <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+      <span>Building document graph...</span>
+    </div>
+    <div id="docsResults"></div>
+  </div>
+
+  <!-- TAB 3: Contradiction scanner -->
+  <div class="tab-panel" id="panel-contra">
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-title">Contradiction scanner</div>
+      <p style="font-size:13px;color:#64748b;margin-bottom:14px;line-height:1.6">
+        Scans all stored documents for factual contradictions — conflicting claims about
+        the same people, dates, locations, or amounts. Uses FAISS to find similar document
+        pairs, then Claude to identify specific contradictions.
+      </p>
+      <button class="scan-btn" id="scanBtn" onclick="runScan()">Run contradiction scan</button>
+    </div>
+    <div class="loader" id="contraLoader">
+      <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+      <span id="contraMsg">Scanning documents...</span>
+    </div>
+    <div class="kpi-row" id="contraKpi" style="display:none"></div>
+    <div id="contraResults"></div>
+  </div>
+</div>
+
+<script>
+const API = 'http://localhost:8000';
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach((t,i) => {
+    t.classList.toggle('active', ['entity','docs','contra'][i] === tab);
+  });
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById(`panel-${tab}`).classList.add('active');
+
+  if (tab === 'docs' && !document.getElementById('docsResults').innerHTML) loadLinkedDocs();
+}
+
+function simClass(s) {
+  return s > 0.85 ? 'sim-high' : s > 0.70 ? 'sim-med' : 'sim-low';
+}
+
+function relClass(r) {
+  return {same_case:'rel-same',related:'rel-related',conflicting:'rel-conflict',unrelated:'rel-unrelated'}[r]||'rel-unrelated';
+}
+
+// ── Entity linking ──────────────────────────────────────────────────────────
+
+function quickSearch(q) {
+  document.getElementById('entityQuery').value = q;
+  searchEntity();
+}
+
+async function searchEntity() {
+  const query = document.getElementById('entityQuery').value.trim();
+  if (!query) return;
+
+  const btn = document.getElementById('entityBtn');
+  btn.disabled = true;
+  document.getElementById('entityLoader').style.display = 'flex';
+  document.getElementById('entityResults').innerHTML = '';
+
+  try {
+    const resp = await fetch(
+      `${API}/entities/link?entity=${encodeURIComponent(query)}`
+    );
+    const d = await resp.json();
+
+    if (!d.results || d.results.length === 0) {
+      document.getElementById('entityResults').innerHTML =
+        `<div class="empty">No linked entities found for "<strong>${query}</strong>".<br>
+        Try running more analyses first, or try a different search term.</div>`;
+      return;
+    }
+
+    document.getElementById('entityResults').innerHTML = `
+      <div style="font-size:13px;color:#64748b;margin-bottom:10px">
+        Found <strong>${d.matches}</strong> linked entities for "<strong>${query}</strong>"
+      </div>
+      ${d.results.map(r => `
+        <div class="match-card">
+          <div class="match-sim ${simClass(r.similarity)}">${Math.round(r.similarity*100)}%</div>
+          <div class="match-info">
+            <div class="match-entity">${r.entity}</div>
+            <div class="match-preview">${r.doc_preview}...</div>
+            <div class="match-meta">
+              <span class="ent-type">${r.type}</span>
+              <span class="sent-badge sb-${r.doc_sentiment}">${r.doc_sentiment}</span>
+              <span class="doc-id">Doc #${r.analysis_id}</span>
+            </div>
+          </div>
+        </div>`).join('')}`;
+  } catch(e) {
+    document.getElementById('entityResults').innerHTML =
+      `<div class="empty">Error: ${e.message}</div>`;
+  } finally {
+    btn.disabled = false;
+    document.getElementById('entityLoader').style.display = 'none';
+  }
+}
+
+// ── Linked documents ────────────────────────────────────────────────────────
+
+async function loadLinkedDocs() {
+  document.getElementById('docsLoader').style.display = 'flex';
+  document.getElementById('docsResults').innerHTML = '';
+
+  try {
+    const resp = await fetch(`${API}/documents/linked`);
+    const d    = await resp.json();
+
+    document.getElementById('docsKpi').innerHTML = `
+      <div class="kpi"><div class="kpi-n">${d.pairs_found}</div><div class="kpi-l">linked pairs found</div></div>`;
+
+    if (!d.pairs || d.pairs.length === 0) {
+      document.getElementById('docsResults').innerHTML =
+        '<div class="empty">No linked document pairs found yet.<br>Analyze more documents to build connections.</div>';
+      return;
+    }
+
+    document.getElementById('docsResults').innerHTML = d.pairs.map(p => `
+      <div class="pair-card">
+        <div class="pair-header">
+          <span style="font-size:13px;font-weight:600;color:#0f172a">
+            Doc #${p.doc_a_id} ↔ Doc #${p.doc_b_id}
+          </span>
+          <span class="pair-sim">${Math.round(p.similarity*100)}% similar</span>
+        </div>
+        <div class="pair-docs">
+          <div class="pair-doc">
+            <div class="pair-doc-label">Document ${p.doc_a_id}</div>
+            <div class="pair-doc-text">${p.doc_a_preview}...</div>
+          </div>
+          <div class="pair-doc">
+            <div class="pair-doc-label">Document ${p.doc_b_id}</div>
+            <div class="pair-doc-text">${p.doc_b_preview}...</div>
+          </div>
+        </div>
+        ${p.shared_entities && p.shared_entities.length ? `
+          <div>
+            <div style="font-size:11px;font-weight:700;color:#94a3b8;margin-bottom:4px">SHARED ENTITIES</div>
+            <div class="shared-ents">
+              ${p.shared_entities.map(e => `<span class="shared-ent">${e}</span>`).join('')}
+            </div>
+          </div>` : ''}
+      </div>`).join('');
+  } catch(e) {
+    document.getElementById('docsResults').innerHTML =
+      `<div class="empty">Error: ${e.message}</div>`;
+  } finally {
+    document.getElementById('docsLoader').style.display = 'none';
+  }
+}
+
+// ── Contradiction scanner ───────────────────────────────────────────────────
+
+const cMsgs = [
+  'Finding similar document pairs...','Running FAISS similarity search...',
+  'Checking for contradictions...','Analyzing conflicting claims...','Building report...'
+];
+let cmi = 0, cmt = null;
+
+async function runScan() {
+  const btn = document.getElementById('scanBtn');
+  btn.disabled = true;
+  document.getElementById('contraLoader').style.display = 'flex';
+  document.getElementById('contraKpi').style.display    = 'none';
+  document.getElementById('contraResults').innerHTML    = '';
+
+  cmi = 0;
+  document.getElementById('contraMsg').textContent = cMsgs[0];
+  cmt = setInterval(() => {
+    cmi = (cmi+1) % cMsgs.length;
+    document.getElementById('contraMsg').textContent = cMsgs[cmi];
+  }, 2000);
+
+  try {
+    const resp = await fetch(`${API}/contradictions/scan`, { method: 'POST' });
+    const d    = await resp.json();
+
+    // KPIs
+    document.getElementById('contraKpi').style.display = 'grid';
+    document.getElementById('contraKpi').innerHTML = `
+      <div class="kpi"><div class="kpi-n">${d.total_docs}</div><div class="kpi-l">docs scanned</div></div>
+      <div class="kpi"><div class="kpi-n">${d.pairs_checked}</div><div class="kpi-l">pairs checked</div></div>
+      <div class="kpi"><div class="kpi-n" style="color:${d.contradictions_found>0?'#dc2626':'#059669'}">${d.contradictions_found}</div><div class="kpi-l">contradictions found</div></div>`;
+
+    if (!d.results || d.results.length === 0) {
+      document.getElementById('contraResults').innerHTML =
+        '<div class="empty">✅ No document pairs to compare yet.<br>Analyze at least 2 documents first.</div>';
+      return;
+    }
+
+    document.getElementById('contraResults').innerHTML = d.results.map(r => {
+      const relCls = relClass(r.relationship);
+      const contrasHtml = r.has_contradictions && r.contradictions.length
+        ? r.contradictions.map(c => `
+            <div class="contra-item">
+              <div class="ci-header">
+                <span class="ci-type">${c.type}</span>
+                <span class="ci-sev sev-${c.severity}">${c.severity}</span>
+                <span class="ci-entity">re: ${c.entity}</span>
+              </div>
+              <div class="ci-claims">
+                <div class="ci-claim">
+                  <div class="ci-claim-label">Doc #${r.doc_a_id} says</div>
+                  <div class="ci-claim-text">${c.claim_a}</div>
+                </div>
+                <div class="ci-claim">
+                  <div class="ci-claim-label">Doc #${r.doc_b_id} says</div>
+                  <div class="ci-claim-text">${c.claim_b}</div>
+                </div>
+              </div>
+              <div class="ci-expl">⚠ ${c.explanation}</div>
+            </div>`).join('')
+        : `<div class="no-contra">✅ No contradictions found between these documents</div>`;
+
+      const sharedHtml = r.shared_entities && r.shared_entities.length
+        ? `<div class="shared-section">
+            <div class="shared-label">SHARED ENTITIES</div>
+            <div class="shared-ents">
+              ${r.shared_entities.map(e=>`<span class="shared-ent">${e}</span>`).join('')}
+            </div>
+           </div>` : '';
+
+      return `
+        <div class="contra-card">
+          <div class="contra-header">
+            <span style="font-size:14px;font-weight:700;color:#0f172a">
+              Doc #${r.doc_a_id} vs Doc #${r.doc_b_id}
+              <span style="font-size:12px;font-weight:400;color:#94a3b8;margin-left:8px">
+                ${Math.round((r.similarity||0)*100)}% similar
+              </span>
+            </span>
+            <span class="contra-rel ${relCls}">${r.relationship}</span>
+          </div>
+          <div class="contra-summary">${r.summary}</div>
+          <div class="contra-docs">
+            <div class="contra-doc">
+              <div class="contra-doc-label">Document ${r.doc_a_id}</div>
+              <div class="contra-doc-text">${r.doc_a_preview}...</div>
+            </div>
+            <div class="contra-doc">
+              <div class="contra-doc-label">Document ${r.doc_b_id}</div>
+              <div class="contra-doc-text">${r.doc_b_preview}...</div>
+            </div>
+          </div>
+          ${sharedHtml}
+          ${r.has_contradictions ? `
+            <div style="font-size:11px;font-weight:700;color:#dc2626;margin:12px 0 8px">
+              ${r.contradictions.length} CONTRADICTION${r.contradictions.length>1?'S':''} DETECTED
+            </div>` : ''}
+          ${contrasHtml}
+        </div>`;
+    }).join('');
+
+  } catch(e) {
+    document.getElementById('contraResults').innerHTML =
+      `<div class="empty">Error: ${e.message}</div>`;
+  } finally {
+    btn.disabled = false;
+    clearInterval(cmt);
+    document.getElementById('contraLoader').style.display = 'none';
+  }
+}
+</script>
+</body>
+</html>

@@ -1,3 +1,5 @@
+from backend.demo1.entity_linker import find_linked_entities, link_documents_by_entity
+from backend.demo1.contradiction import run_contradiction_scan
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
@@ -318,3 +320,27 @@ def history(
 @app.get("/stats")
 def stats():
     return get_stats()
+
+@app.get("/entities/link")
+def entity_link(entity: str = Query(..., description="Entity name to search for")):
+    """Find all documents mentioning entities similar to the query."""
+    results = find_linked_entities(entity, top_k=10, threshold=0.70)
+    return {
+        "query":   entity,
+        "matches": len(results),
+        "results": results
+    }
+
+@app.get("/documents/linked")
+def documents_linked():
+    """Find document pairs that share linked entities."""
+    pairs = link_documents_by_entity()
+    return {
+        "pairs_found": len(pairs),
+        "pairs":       pairs
+    }
+
+@app.post("/contradictions/scan")
+def contradictions_scan():
+    """Scan all stored documents for factual contradictions."""
+    return run_contradiction_scan()

@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NLP Legal Analyzer — Home</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
+
+    /* Nav */
+    .nav { background: #0f172a; border-bottom: 1px solid #1e293b; padding: 0 2rem; display: flex; align-items: center; gap: 1.5rem; height: 56px; position: sticky; top: 0; z-index: 100; }
+    .nav-brand { font-size: 16px; font-weight: 800; color: #fff; letter-spacing: -0.02em; }
+    .nav-brand span { color: #7c3aed; }
+    .nav-sub { font-size: 11px; color: #475569; }
+    .nav-links { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
+    .nav-link { font-size: 11px; font-weight: 500; padding: 5px 10px; border-radius: 6px; color: #94a3b8; text-decoration: none; border: none; background: transparent; cursor: pointer; white-space: nowrap; }
+    .nav-link:hover { background: #1e293b; color: #fff; }
+    .nav-link.active { background: #7c3aed; color: #fff; }
+
+    /* Hero */
+    .hero { padding: 4rem 2rem 2rem; text-align: center; max-width: 800px; margin: 0 auto; }
+    .hero-badge { display: inline-flex; align-items: center; gap: 6px; background: #1e293b; border: 1px solid #334155; border-radius: 20px; padding: 5px 14px; font-size: 11px; color: #94a3b8; margin-bottom: 1.5rem; }
+    .hero-dot { width: 6px; height: 6px; border-radius: 50%; background: #22c55e; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+    .hero h1 { font-size: clamp(28px, 5vw, 48px); font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 1rem; }
+    .hero h1 span { color: #7c3aed; }
+    .hero p { font-size: 15px; color: #94a3b8; line-height: 1.7; max-width: 560px; margin: 0 auto 2rem; }
+    .hero-stats { display: flex; justify-content: center; gap: 2rem; flex-wrap: wrap; margin-bottom: 3rem; }
+    .hero-stat { text-align: center; }
+    .hero-stat-n { font-size: 28px; font-weight: 800; color: #7c3aed; }
+    .hero-stat-l { font-size: 11px; color: #64748b; margin-top: 2px; }
+
+    /* API Status */
+    .api-status { display: inline-flex; align-items: center; gap: 8px; background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 8px 16px; font-size: 12px; color: #94a3b8; margin-bottom: 3rem; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #ef4444; }
+    .status-dot.online { background: #22c55e; }
+
+    /* Feature grid */
+    .section { max-width: 1100px; margin: 0 auto; padding: 0 2rem 4rem; }
+    .section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em; color: #475569; margin-bottom: 1rem; display: flex; align-items: center; gap: 10px; }
+    .section-title::after { content: ''; flex: 1; height: 1px; background: #1e293b; }
+
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; margin-bottom: 2.5rem; }
+
+    .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 1.25rem; text-decoration: none; color: inherit; display: block; transition: all 0.2s; position: relative; overflow: hidden; }
+    .card:hover { border-color: #7c3aed; transform: translateY(-2px); box-shadow: 0 8px 25px rgba(124,58,237,0.15); }
+    .card::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(124,58,237,0.05) 0%, transparent 60%); opacity: 0; transition: opacity 0.2s; }
+    .card:hover::before { opacity: 1; }
+
+    .card-icon { font-size: 24px; margin-bottom: 10px; }
+    .card-title { font-size: 14px; font-weight: 700; color: #f1f5f9; margin-bottom: 4px; }
+    .card-desc { font-size: 12px; color: #64748b; line-height: 1.5; }
+    .card-tag { display: inline-block; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; padding: 2px 8px; border-radius: 10px; margin-top: 10px; }
+    .tag-high { background: rgba(124,58,237,0.2); color: #a78bfa; }
+    .tag-med  { background: rgba(34,197,94,0.15); color: #4ade80; }
+    .tag-ml   { background: rgba(251,146,60,0.15); color: #fb923c; }
+    .tag-biz  { background: rgba(56,189,248,0.15); color: #38bdf8; }
+    .tag-ext  { background: rgba(244,63,94,0.15); color: #fb7185; }
+
+    .card-badge { position: absolute; top: 12px; right: 12px; font-size: 9px; font-weight: 700; padding: 2px 7px; border-radius: 10px; background: #22c55e; color: #fff; }
+
+    /* Footer */
+    .footer { border-top: 1px solid #1e293b; padding: 2rem; text-align: center; font-size: 12px; color: #475569; }
+    .footer a { color: #7c3aed; text-decoration: none; }
+  </style>
+</head>
+<body>
+
+<nav class="nav">
+  <div>
+    <div class="nav-brand">NLP <span>Legal</span> Analyzer</div>
+    <div class="nav-sub">Portfolio · Demo 1</div>
+  </div>
+  <div class="nav-links">
+    <a class="nav-link active" href="home.html">Home</a>
+    <a class="nav-link" href="index.html">Analyzer</a>
+    <a class="nav-link" href="batch.html">Batch</a>
+    <a class="nav-link" href="timeline.html">Timeline</a>
+    <a class="nav-link" href="dashboard.html">Dashboard</a>
+    <a class="nav-link" href="insights.html">Insights</a>
+    <a class="nav-link" href="scorer.html">Scorer</a>
+    <a class="nav-link" href="risk.html">Risk</a>
+    <a class="nav-link" href="citations.html">Citations</a>
+    <a class="nav-link" href="compare.html">Compare</a>
+    <a class="nav-link" href="model.html">Model</a>
+    <a class="nav-link" href="audit.html">Audit</a>
+  </div>
+</nav>
+
+<div class="hero">
+  <div class="hero-badge">
+    <div class="hero-dot" id="heroDot"></div>
+    <span id="heroStatus">Checking API...</span>
+  </div>
+  <h1>Legal NLP <span>Intelligence</span><br>Platform</h1>
+  <p>A full-stack NLP portfolio built on FastAPI — entity extraction, risk scoring, citation resolution, fine-tuned legal models, and more.</p>
+
+  <div class="api-status">
+    <div class="status-dot" id="statusDot"></div>
+    <span id="statusText">API: checking...</span>
+    <span style="color:#334155">·</span>
+    <span>localhost:8000</span>
+  </div>
+
+  <div class="hero-stats">
+    <div class="hero-stat">
+      <div class="hero-stat-n">15</div>
+      <div class="hero-stat-l">Features Built</div>
+    </div>
+    <div class="hero-stat">
+      <div class="hero-stat-n" id="statRequests">—</div>
+      <div class="hero-stat-l">API Requests</div>
+    </div>
+    <div class="hero-stat">
+      <div class="hero-stat-n" id="statDocs">—</div>
+      <div class="hero-stat-l">Docs Analyzed</div>
+    </div>
+    <div class="hero-stat">
+      <div class="hero-stat-n">60</div>
+      <div class="hero-stat-l">Training Samples</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+
+  <!-- High Impact -->
+  <div class="section-title">🔴 High Impact — Core NLP</div>
+  <div class="grid">
+    <a class="card" href="index.html">
+      <div class="card-badge">Live</div>
+      <div class="card-icon">🔍</div>
+      <div class="card-title">Text Analyzer</div>
+      <div class="card-desc">Sentiment analysis, named entity recognition, key phrases — powered by Claude AI.</div>
+      <div class="card-tag tag-high">Core</div>
+    </a>
+    <a class="card" href="timeline.html">
+      <div class="card-badge">Live</div>
+      <div class="card-icon">📅</div>
+      <div class="card-title">Timeline Extraction (#1)</div>
+      <div class="card-desc">Extract and normalize chronological events from legal documents with party attribution.</div>
+      <div class="card-tag tag-high">High Impact</div>
+    </a>
+    <a class="card" href="insights.html">
+      <div class="card-badge">Live</div>
+      <div class="card-icon">🔗</div>
+      <div class="card-title">Entity Linking (#2)</div>
+      <div class="card-desc">Cross-document entity linking — find all documents mentioning the same entity.</div>
+      <div class="card-tag tag-high">High Impact</div>
+    </a>
+    <a class="card" href="scorer.html">
+      <div class="card-badge">Live</div>
+      <div class="card-icon">🎯</div>
+      <div class="card-title">Confidence Scores (#3)</div>
+      <div class="card-desc">Entity extraction with confidence scores, salience metrics, and type signals.</div>
+      <div class="card-tag tag-high">High Impact</div>
+    </a>
+    <a class="card" href="dashboard.html">
+      <div class="card-badge">Live</div>
+      <div class="card-icon">⚡</div>
+      <div class="card-title">Contradiction Detection (#4)</div>
+      <div class="card-desc">Scan stored documents for factual contradictions using NLP comparison.</div>
+      <div class="card-tag tag-high">High Impact</div>
+    </a>
+    <a class="card" href="citations.html">
+      <div class="card-badge">Live</div>
+      <div class="card-icon">⚖️</div>
+      <div class="card-title">Citation Resolver (#5)</div>
+      <div class="card-desc">Extract and resolve legal citations — US Code, Federal Reporter, Westlaw — against CourtListener.</div>
+      <div class="card-tag tag-high">High Impact</div>
+    </a>
+    <a class="card" href="compare.html">
+      <div class="card-badge">Live</div>
+      <div class="card-icon">📊</div>
+      <div class="card-title">Document Comparison (#6)</div>
+      <div class="card-desc">Compare legal documents by cosine similarity, entity overlap, citation diff, and structure.</div>
+      <div class="card-tag tag-high">High Impact</div>
+    </a>
+  </div>
+
+  <!-- Medium Impact -->
+  <div class="section-title">🟡 Medium Impact — Platform Features</div>
+  <div class="grid">
+    <a class="card" href="batch.html">
+      <div class="card-badge">Live</div>
+      <div class="card-icon">📦</div>
+      <div class="card-title">Batch Processing (#7)</div>
+      <div class="card-desc">Analyze multiple documents simultaneously with CSV export support.</div>
+      <div class="card-tag tag-med">Medium</div>
+    </a>
+    <a class="card" href="risk.html">
+      <div class="card-badge">Live</div>
+      <div class="card-icon">🚨</div>
+      <div class="card-title">Risk Scoring (#21)</div>
+      <div class="card-desc">Score legal documents 0–10 for risk using criminal, fraud, financial, and regulatory signals.</div>
+      <div class="card-tag tag-med">Medium</div>
+    </a>
+    <a class="card" href="audit.html">
+      <div class="card-badge">Live</div>
+      <div class="card-icon">📋</div>
+      <div class="card-title">Audit Trail (#20)</div>
+      <div class="card-desc">Full request logging — endpoint, response time, status codes, error tracking.</div>
+      <div class="card-tag tag-med">Medium</div>
+    </a>
+    <a class="card" href="review.html">
+      <div class="card-badge">Live</div>
+      <div class="card-icon">✍️</div>
+      <div class="card-title">Review Queue (#10)</div>
+      <div class="card-desc">Human-in-the-loop feedback and correction pipeline for model retraining.</div>
+      <div class="card-tag tag-med">Medium</div>
+    </a>
+    <a class="card" href="multilingual.html">
+      <div class="card-badge">Live</div>
+      <div class="card-icon">🌐</div>
+      <div class="card-title">Multilingual (#18)</div>
+      <div class="card-desc">Analyze text in 9 languages — EN, ZH, ES, FR, DE, JA, AR, PT, auto-detect.</div>
+      <div class="card-tag tag-med">Medium</div>
+    </a>
+  </div>
+
+  <!-- ML Upgrades -->
+  <div class="section-title">🟢 ML Upgrades — Advanced Models</div>
+  <div class="grid">
+    <a class="card" href="model.html">
+      <div class="card-badge">Live</div>
+      <div class="card-icon">🧠</div>
+      <div class="card-title">Fine-Tuned Model (#14)</div>
+      <div class="card-desc">DistilBERT fine-tuned on 60 legal sentences — classifies PROSECUTION / DEFENSE / NEUTRAL.</div>
+      <div class="card-tag tag-ml">ML</div>
+    </a>
+    <a class="card" href="insights.html">
+      <div class="card-badge">Live</div>
+      <div class="card-icon">🔀</div>
+      <div class="card-title">Entity Disambiguation (#15)</div>
+      <div class="card-desc">Resolve ambiguous entity mentions to canonical real-world forms.</div>
+      <div class="card-tag tag-ml">ML</div>
+    </a>
+    <a class="card" href="insights.html">
+      <div class="card-badge">Live</div>
+      <div class="card-icon">🔄</div>
+      <div class="card-title">Coreference Resolution (#16)</div>
+      <div class="card-desc">Resolve pronouns and noun phrases to their referent entities across a document.</div>
+      <div class="card-tag tag-ml">ML</div>
+    </a>
+    <a class="card" href="scorer.html">
+      <div class="card-badge">Live</div>
+      <div class="card-icon">📝</div>
+      <div class="card-title">Summary Scoring (#17)</div>
+      <div class="card-desc">Score summaries against source documents using BERTScore-style evaluation.</div>
+      <div class="card-tag tag-ml">ML</div>
+    </a>
+  </div>
+
+  <!-- Business Features -->
+  <div class="section-title">🔵 Business Features — Enterprise</div>
+  <div class="grid">
+    <a class="card" href="dashboard.html">
+      <div class="card-badge">Live</div>
+      <div class="card-icon">📁</div>
+      <div class="card-title">Case Management (#19)</div>
+      <div class="card-desc">Full case lifecycle — create, track, attach documents, risk scoring, notes, timeline.</div>
+      <div class="card-tag tag-biz">Business</div>
+    </a>
+    <a class="card" href="dashboard.html">
+      <div class="card-badge">Live</div>
+      <div class="card-icon">🏛️</div>
+      <div class="card-title">Court API / PACER (#22)</div>
+      <div class="card-desc">CourtListener integration — search 1,378+ SDNY opinions, fetch dockets, resolve citations.</div>
+      <div class="card-tag tag-biz">Business</div>
+    </a>
+    <a class="card" href="audit.html">
+      <div class="card-badge">Live</div>
+      <div class="card-icon">🔐</div>
+      <div class="card-title">Authentication (#11)</div>
+      <div class="card-desc">JWT-based auth with bcrypt password hashing, role management, token refresh.</div>
+      <div class="card-tag tag-biz">Business</div>
+    </a>
+    <a class="card" href="audit.html">
+      <div class="card-badge">Live</div>
+      <div class="card-icon">🔔</div>
+      <div class="card-title">Webhooks (#10)</div>
+      <div class="card-desc">Event-driven notifications — high risk, case created, contradiction found, citation resolved.</div>
+      <div class="card-tag tag-biz">Business</div>
+    </a>
+    <a class="card" href="audit.html">
+      <div class="card-badge">Live</div>
+      <div class="card-icon">💬</div>
+      <div class="card-title">Slack / Teams (#23)</div>
+      <div class="card-desc">Send NLP analysis results and risk alerts to Slack and Microsoft Teams channels.</div>
+      <div class="card-tag tag-biz">Business</div>
+    </a>
+    <a class="card" href="#" onclick="alert('Load chrome://extensions → Load unpacked → chrome_extension/')">
+      <div class="card-badge">Installed</div>
+      <div class="card-icon">🧩</div>
+      <div class="card-title">Chrome Extension (#24)</div>
+      <div class="card-desc">Highlight text on any webpage → instant entity extraction, risk scoring, citation lookup.</div>
+      <div class="card-tag tag-ext">Extension</div>
+    </a>
+  </div>
+
+</div>
+
+<div class="footer">
+  Built with FastAPI · spaCy · DistilBERT · CourtListener · ReportLab · bcrypt · JWT
+  &nbsp;·&nbsp; <a href="http://localhost:8000/docs" target="_blank">API Docs →</a>
+</div>
+
+<script>
+  const API = 'http://localhost:8000';
+
+  async function checkApi() {
+    const dot    = document.getElementById('statusDot');
+    const text   = document.getElementById('statusText');
+    const hDot   = document.getElementById('heroDot');
+    const hText  = document.getElementById('heroStatus');
+    try {
+      const r = await fetch(`${API}/health`, { signal: AbortSignal.timeout(3000) });
+      if (r.ok) {
+        dot.classList.add('online');
+        text.textContent = 'API: Online';
+        hText.textContent = 'All systems operational';
+      } else { throw new Error(); }
+    } catch {
+      text.textContent = 'API: Offline — start uvicorn';
+      hText.textContent = 'API offline';
+      hDot.style.background = '#ef4444';
+    }
+  }
+
+  async function loadStats() {
+    try {
+      const [auditR, statsR] = await Promise.all([
+        fetch(`${API}/audit/stats`),
+        fetch(`${API}/stats`),
+      ]);
+      const audit = await auditR.json();
+      const stats = await statsR.json();
+      document.getElementById('statRequests').textContent =
+        audit.total_requests?.toLocaleString() || '—';
+      document.getElementById('statDocs').textContent =
+        stats.total_analyses?.toLocaleString() || '—';
+    } catch {}
+  }
+
+  checkApi();
+  loadStats();
+</script>
+</body>
+</html>

@@ -1,3 +1,15 @@
+from backend.demo1.fine_tune import init_model_table, router as model_router
+from backend.demo1.slack_teams import init_notify_table, router as notify_router
+from backend.demo1.auth import init_auth_table, router as auth_router
+from backend.demo1.custom_entities import init_custom_entity_table, router as custom_entities_router
+from backend.demo1.webhook import init_webhook_table, router as webhook_router
+from backend.demo1.pdf_export import router as pdf_router
+from backend.demo1.audit_trail import AuditMiddleware, init_audit_table, router as audit_router
+from backend.demo1.risk_scorer import router as risk_router
+from backend.demo1.document_comparison import router as comparison_router
+from backend.demo1.citation_resolver import router as citations_router
+from backend.demo1.case_management   import router as cases_router
+from backend.demo1.pacer_integration import router as pacer_router
 from backend.demo1.multilingual import analyze_multilingual, detect_language, SUPPORTED_LANGUAGES
 from backend.demo1.summary_scorer import score_summary, batch_score_summaries
 from backend.demo1.entity_confidence import score_entities, get_entity_summary
@@ -27,6 +39,19 @@ from typing import List, Optional
 load_dotenv()
 
 app = FastAPI(title="NLP Text Analyzer API")
+app.include_router(model_router, prefix="/model", tags=["Fine-Tuned Model"])
+app.include_router(notify_router, prefix="/notify", tags=["Slack & Teams"])
+app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
+app.include_router(custom_entities_router, prefix="/entities/custom", tags=["Custom Entities"])
+app.include_router(webhook_router, prefix="/webhooks", tags=["Webhooks"])
+app.include_router(pdf_router, prefix="/export", tags=["PDF Export"])
+app.add_middleware(AuditMiddleware)
+app.include_router(audit_router, prefix="/audit", tags=["Audit Trail"])
+app.include_router(risk_router, prefix="/risk", tags=["Risk Scoring"])
+app.include_router(comparison_router, prefix="/documents", tags=["Document Comparison"])
+app.include_router(citations_router, prefix="/citations", tags=["Citation Resolver"])
+app.include_router(cases_router, prefix="/cases", tags=["Case Management"])
+app.include_router(pacer_router, prefix="/pacer",  tags=["PACER"])
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -35,6 +60,12 @@ app.add_middleware(
 )
 
 init_db()
+init_audit_table()
+init_webhook_table()
+init_custom_entity_table()
+init_auth_table()
+init_notify_table()
+init_model_table()
 client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 executor = ThreadPoolExecutor(max_workers=3)
 

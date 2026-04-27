@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Citation Resolver — NLP Legal Analyzer</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f1f5f9; color: #1a1a1a; }
+    .nav { background: #0f172a; padding: 0 2rem; display: flex; align-items: center; gap: 1.5rem; height: 56px; }
+    .nav-brand { font-size: 15px; font-weight: 700; color: #fff; }
+    .nav-links { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
+    .nav-link { font-size: 11px; font-weight: 500; padding: 5px 10px; border-radius: 6px; color: #94a3b8; text-decoration: none; border: none; background: transparent; cursor: pointer; white-space: nowrap; }
+    .nav-link:hover { background: #1e293b; color: #fff; }
+    .nav-link.active { background: #7c3aed; color: #fff; }
+    .page { padding: 1.5rem 2rem; max-width: 860px; margin: 0 auto; }
+    .page-title { font-size: 22px; font-weight: 700; color: #0f172a; margin-bottom: 4px; }
+    .page-sub { font-size: 13px; color: #64748b; margin-bottom: 1.5rem; }
+    textarea { width: 100%; min-height: 130px; padding: 14px; border: 1px solid #ddd; border-radius: 10px; font-size: 14px; line-height: 1.6; resize: vertical; background: #fff; }
+    textarea:focus { outline: none; border-color: #7c3aed; box-shadow: 0 0 0 3px rgba(124,58,237,0.1); }
+    .btn-row { display: flex; gap: 10px; margin-top: 12px; }
+    .btn { padding: 10px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; border: 1px solid #ddd; background: #fff; transition: all 0.15s; }
+    .btn:hover { background: #f3f4f6; }
+    .btn.primary { background: #7c3aed; color: #fff; border-color: #7c3aed; }
+    .btn.primary:hover { background: #6d28d9; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .results { margin-top: 1.5rem; display: none; }
+    .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 1.25rem; margin-bottom: 12px; }
+    .card-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #9ca3af; margin-bottom: 12px; }
+    .citation-item { border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px 14px; margin-bottom: 8px; }
+    .citation-raw { font-size: 14px; font-weight: 700; color: #0f172a; font-family: monospace; }
+    .citation-type { display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; padding: 2px 8px; border-radius: 10px; margin-top: 4px; }
+    .type-statute  { background: #fee2e2; color: #991b1b; }
+    .type-case     { background: #ede9fe; color: #5b21b6; }
+    .citation-resolved { margin-top: 8px; padding: 8px 12px; background: #f0fdf4; border-radius: 6px; border: 1px solid #bbf7d0; font-size: 12px; }
+    .resolved-name { font-weight: 700; color: #065f46; }
+    .resolved-meta { color: #6b7280; margin-top: 2px; }
+    .resolved-link { color: #7c3aed; text-decoration: none; font-size: 11px; }
+    .not-resolved { margin-top: 8px; font-size: 12px; color: #9ca3af; font-style: italic; }
+    .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
+    .sum-stat { text-align: center; padding: 12px; background: #f9fafb; border-radius: 8px; border: 1px solid #f3f4f6; }
+    .sum-n { font-size: 24px; font-weight: 700; color: #0f172a; }
+    .sum-l { font-size: 11px; color: #9ca3af; margin-top: 2px; }
+    .chip { font-size: 12px; padding: 5px 12px; border-radius: 20px; border: 1px solid #ddd; cursor: pointer; background: #fff; color: #555; }
+    .chip:hover { border-color: #7c3aed; color: #7c3aed; }
+    .examples { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; align-items: center; }
+  </style>
+</head>
+<body>
+<nav class="nav">
+  <div class="nav-brand">NLP Legal Analyzer</div>
+  <div class="nav-links">
+    <a class="nav-link" href="home.html">🏠 Home</a>
+    <a class="nav-link" href="index.html">Analyzer</a>
+    <a class="nav-link" href="timeline.html">Timeline</a>
+    <a class="nav-link active" href="citations.html">Citations</a>
+    <a class="nav-link" href="compare.html">Compare</a>
+    <a class="nav-link" href="risk.html">Risk</a>
+    <a class="nav-link" href="model.html">Model</a>
+    <a class="nav-link" href="audit.html">Audit</a>
+    <a class="nav-link" href="dashboard.html">Dashboard</a>
+  </div>
+</nav>
+
+<div class="page">
+  <div class="page-title">⚖️ Legal Citation Resolver</div>
+  <div class="page-sub">Extract and resolve US Code statutes, Federal Reporter citations, Westlaw, and Lexis references against CourtListener.</div>
+
+  <div class="examples">
+    <span style="font-size:12px;color:#9ca3af">Examples:</span>
+    <span class="chip" onclick="setEx('estrada')">Estrada Case</span>
+    <span class="chip" onclick="setEx('usc')">US Code</span>
+    <span class="chip" onclick="setEx('mixed')">Mixed Citations</span>
+  </div>
+
+  <textarea id="txt" placeholder="Paste legal text containing citations — 18 U.S.C. § 1343, 880 F. Supp. 2d 478, 2012 WL 3083477..."></textarea>
+
+  <div class="btn-row">
+    <button class="btn" onclick="runCitations(false)">Extract Only</button>
+    <button class="btn primary" id="resolveBtn" onclick="runCitations(true)">Extract & Resolve</button>
+  </div>
+
+  <div class="results" id="results">
+    <div class="card">
+      <div class="card-title">Summary</div>
+      <div class="summary-grid" id="summaryGrid"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Citations Found</div>
+      <div id="citationsList"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const API = 'http://localhost:8000';
+  const EXAMPLES = {
+    estrada: "Defendant violated 18 U.S.C. 1343 and was cited in 880 F. Supp. 2d 478 and 2012 WL 3083477. See also 2012 U.S. Dist. LEXIS 102391.",
+    usc:     "The charges included violations of 18 U.S.C. 1341, 18 U.S.C. 1343, and 18 U.S.C. 1956. The court applied Rule 12(b)(6).",
+    mixed:   "United States v. Countrywide, 996 F. Supp. 2d 247, involved violations of 12 U.S.C. 1833a and mail and wire fraud under 18 U.S.C. 1341 and 1343."
+  };
+  function setEx(k) { document.getElementById('txt').value = EXAMPLES[k]; }
+
+  async function runCitations(resolve) {
+    const text = document.getElementById('txt').value.trim();
+    if (!text) return;
+    const btn = document.getElementById('resolveBtn');
+    btn.disabled = true; btn.textContent = resolve ? 'Resolving...' : 'Extracting...';
+
+    try {
+      const endpoint = resolve ? '/citations/resolve' : '/citations/extract';
+      const r = await fetch(`${API}${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, resolve })
+      });
+      const d = await r.json();
+      const sum = d.summary || {};
+      const citations = d.citations || [];
+
+      document.getElementById('summaryGrid').innerHTML = `
+        <div class="sum-stat"><div class="sum-n">${sum.total_citations || 0}</div><div class="sum-l">Total</div></div>
+        <div class="sum-stat"><div class="sum-n">${(sum.by_type?.statute || 0)}</div><div class="sum-l">Statutes</div></div>
+        <div class="sum-stat"><div class="sum-n">${(sum.by_type?.case || 0)}</div><div class="sum-l">Case Citations</div></div>
+        <div class="sum-stat"><div class="sum-n">${sum.resolved || 0}</div><div class="sum-l">Resolved</div></div>
+      `;
+
+      document.getElementById('citationsList').innerHTML = citations.map(c => {
+        const typeClass = c.type === 'statute' ? 'type-statute' : 'type-case';
+        const top = c.resolved?.top_match;
+        const resolvedHtml = top
+          ? `<div class="citation-resolved">
+              <div class="resolved-name">${top.case_name}</div>
+              <div class="resolved-meta">${top.court} · ${(top.date_filed||'').slice(0,10)} · Judge ${top.judge||'N/A'}</div>
+              <a class="resolved-link" href="${top.url}" target="_blank">View on CourtListener →</a>
+             </div>`
+          : c.resolve_status === 'not_applicable'
+            ? ''
+            : `<div class="not-resolved">Not resolved via CourtListener</div>`;
+
+        return `<div class="citation-item">
+          <div class="citation-raw">${c.raw}</div>
+          <span class="citation-type ${typeClass}">${c.label}</span>
+          ${resolvedHtml}
+        </div>`;
+      }).join('') || '<div style="color:#9ca3af;font-size:13px;padding:8px">No citations found</div>';
+
+      document.getElementById('results').style.display = 'block';
+    } catch(e) { alert('Error: ' + e.message); }
+    finally {
+      btn.disabled = false;
+      btn.textContent = 'Extract & Resolve';
+    }
+  }
+</script>
+</body>
+</html>

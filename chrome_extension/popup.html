@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NLP Legal Analyzer</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    width: 380px;
+    min-height: 200px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 13px;
+    background: #0d0d0f;
+    color: #e8e4da;
+  }
+
+  /* ── Header ── */
+  .header {
+    background: #141417;
+    border-bottom: 2px solid #c9a84c;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .logo {
+    width: 28px; height: 28px;
+    background: linear-gradient(135deg, #c9a84c, #e8c56a);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 900; color: #0d0d0f;
+  }
+  .header-text h1 {
+    font-size: 13px; font-weight: 700; color: #e8e4da;
+  }
+  .header-text p {
+    font-size: 10px; color: #7a7670;
+  }
+  .status-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #4caf7d; margin-left: auto;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+  /* ── Tabs ── */
+  .tabs {
+    display: flex;
+    background: #141417;
+    border-bottom: 1px solid #232328;
+  }
+  .tab {
+    flex: 1; padding: 8px 4px;
+    font-size: 10px; font-weight: 600;
+    text-align: center; cursor: pointer;
+    color: #7a7670; border: none; background: none;
+    text-transform: uppercase; letter-spacing: 0.05em;
+    transition: color 0.2s;
+  }
+  .tab.active { color: #c9a84c; border-bottom: 2px solid #c9a84c; }
+  .tab:hover { color: #e8e4da; }
+
+  /* ── Input area ── */
+  .input-area { padding: 12px 14px; }
+  textarea {
+    width: 100%; height: 80px;
+    background: #141417; border: 1px solid #232328;
+    border-radius: 6px; color: #e8e4da;
+    font-size: 12px; padding: 8px; resize: none;
+    font-family: inherit; line-height: 1.5;
+    transition: border-color 0.2s;
+  }
+  textarea:focus { outline: none; border-color: #c9a84c; }
+  textarea::placeholder { color: #7a7670; }
+
+  .btn-row { display: flex; gap: 8px; margin-top: 8px; }
+  .btn {
+    flex: 1; padding: 8px;
+    border: none; border-radius: 6px;
+    font-size: 11px; font-weight: 600;
+    cursor: pointer; transition: opacity 0.2s;
+    text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .btn:hover { opacity: 0.85; }
+  .btn-primary { background: #c9a84c; color: #0d0d0f; }
+  .btn-secondary { background: #232328; color: #e8e4da; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* ── Results ── */
+  .results { padding: 0 14px 12px; }
+
+  .loading {
+    text-align: center; padding: 20px;
+    color: #7a7670; font-size: 12px;
+  }
+  .spinner {
+    width: 20px; height: 20px; border: 2px solid #232328;
+    border-top-color: #c9a84c; border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 8px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .section-title {
+    font-size: 9px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.15em;
+    color: #c9a84c; margin: 10px 0 6px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .section-title::after {
+    content: ''; flex: 1; height: 1px; background: #232328;
+  }
+
+  /* Entity tags */
+  .entity-grid { display: flex; flex-wrap: wrap; gap: 5px; }
+  .entity-tag {
+    padding: 3px 8px; border-radius: 12px;
+    font-size: 10px; font-weight: 600;
+    border: 1px solid;
+  }
+  .tag-PERSON   { background: rgba(76,175,125,0.12); color: #4caf7d; border-color: rgba(76,175,125,0.3); }
+  .tag-ORG      { background: rgba(91,127,166,0.12); color: #7aaad4; border-color: rgba(91,127,166,0.3); }
+  .tag-GPE      { background: rgba(201,168,76,0.12); color: #c9a84c; border-color: rgba(201,168,76,0.3); }
+  .tag-STATUTE  { background: rgba(224,82,82,0.12);  color: #e05252; border-color: rgba(224,82,82,0.3); }
+  .tag-JUDGE    { background: rgba(156,39,176,0.12); color: #ce93d8; border-color: rgba(156,39,176,0.3); }
+  .tag-LEGAL_TERM { background: rgba(255,152,0,0.12); color: #ffb74d; border-color: rgba(255,152,0,0.3); }
+  .tag-DOCKET   { background: rgba(0,188,212,0.12); color: #4dd0e1; border-color: rgba(0,188,212,0.3); }
+  .tag-default  { background: rgba(255,255,255,0.05); color: #b8b4aa; border-color: #232328; }
+
+  /* Risk meter */
+  .risk-bar-wrap { background: #141417; border-radius: 4px; height: 8px; overflow: hidden; margin: 6px 0; }
+  .risk-bar { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
+  .risk-row { display: flex; justify-content: space-between; align-items: center; }
+  .risk-score { font-size: 22px; font-weight: 900; }
+  .risk-level { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; }
+
+  /* Citations */
+  .citation-item {
+    background: #141417; border: 1px solid #232328;
+    border-radius: 5px; padding: 6px 9px; margin-bottom: 5px;
+    font-size: 11px;
+  }
+  .citation-raw { font-weight: 600; color: #e8e4da; }
+  .citation-type { font-size: 9px; color: #c9a84c; text-transform: uppercase; letter-spacing: 0.1em; }
+  .citation-resolved { font-size: 10px; color: #4caf7d; margin-top: 3px; }
+
+  /* Timeline */
+  .timeline-item {
+    border-left: 2px solid #c9a84c;
+    padding: 4px 0 4px 10px; margin-bottom: 8px;
+    position: relative;
+  }
+  .timeline-item::before {
+    content: ''; width: 7px; height: 7px;
+    background: #c9a84c; border-radius: 50%;
+    position: absolute; left: -5px; top: 7px;
+  }
+  .timeline-date { font-size: 9px; color: #c9a84c; font-weight: 700; }
+  .timeline-event { font-size: 11px; color: #e8e4da; margin-top: 2px; }
+
+  /* Settings */
+  .settings { padding: 12px 14px; }
+  .setting-row { margin-bottom: 10px; }
+  .setting-label { font-size: 10px; color: #7a7670; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.08em; }
+  input[type="text"] {
+    width: 100%; background: #141417; border: 1px solid #232328;
+    border-radius: 5px; color: #e8e4da; font-size: 12px;
+    padding: 6px 9px; font-family: monospace;
+  }
+  input[type="text"]:focus { outline: none; border-color: #c9a84c; }
+
+  .error { color: #e05252; font-size: 11px; padding: 8px 0; text-align: center; }
+  .empty { color: #7a7670; font-size: 11px; padding: 8px 0; text-align: center; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">⚖</div>
+  <div class="header-text">
+    <h1>NLP Legal Analyzer</h1>
+    <p>Powered by NLP Text Analyzer API</p>
+  </div>
+  <div class="status-dot" id="statusDot" title="API Status"></div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" data-tab="analyze">Analyze</button>
+  <button class="tab" data-tab="risk">Risk</button>
+  <button class="tab" data-tab="citations">Citations</button>
+  <button class="tab" data-tab="timeline">Timeline</button>
+  <button class="tab" data-tab="settings">⚙</button>
+</div>
+
+<!-- ANALYZE TAB -->
+<div id="tab-analyze" class="tab-content">
+  <div class="input-area">
+    <textarea id="analyzeText" placeholder="Paste legal text or select text on any page..."></textarea>
+    <div class="btn-row">
+      <button class="btn btn-secondary" id="pasteBtn">Paste Selected</button>
+      <button class="btn btn-primary" id="analyzeBtn">Analyze</button>
+    </div>
+  </div>
+  <div class="results" id="analyzeResults"></div>
+</div>
+
+<!-- RISK TAB -->
+<div id="tab-risk" class="tab-content" style="display:none">
+  <div class="input-area">
+    <textarea id="riskText" placeholder="Paste legal text to assess risk..."></textarea>
+    <div class="btn-row">
+      <select id="riskContext" style="flex:1;background:#141417;border:1px solid #232328;border-radius:6px;color:#e8e4da;padding:7px;font-size:11px;">
+        <option value="general">General</option>
+        <option value="criminal">Criminal</option>
+        <option value="regulatory">Regulatory</option>
+      </select>
+      <button class="btn btn-primary" id="riskBtn" style="flex:2">Score Risk</button>
+    </div>
+  </div>
+  <div class="results" id="riskResults"></div>
+</div>
+
+<!-- CITATIONS TAB -->
+<div id="tab-citations" class="tab-content" style="display:none">
+  <div class="input-area">
+    <textarea id="citationsText" placeholder="Paste text containing legal citations..."></textarea>
+    <div class="btn-row">
+      <button class="btn btn-secondary" id="extractCitationsBtn">Extract Only</button>
+      <button class="btn btn-primary" id="resolveCitationsBtn">Extract & Resolve</button>
+    </div>
+  </div>
+  <div class="results" id="citationsResults"></div>
+</div>
+
+<!-- TIMELINE TAB -->
+<div id="tab-timeline" class="tab-content" style="display:none">
+  <div class="input-area">
+    <textarea id="timelineText" placeholder="Paste legal text to extract timeline..."></textarea>
+    <div class="btn-row">
+      <button class="btn btn-primary" id="timelineBtn">Extract Timeline</button>
+    </div>
+  </div>
+  <div class="results" id="timelineResults"></div>
+</div>
+
+<!-- SETTINGS TAB -->
+<div id="tab-settings" class="tab-content" style="display:none">
+  <div class="settings">
+    <div class="setting-row">
+      <div class="setting-label">API Base URL</div>
+      <input type="text" id="apiUrl" value="http://localhost:8000" placeholder="http://localhost:8000">
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" id="testApiBtn">Test Connection</button>
+      <button class="btn btn-primary" id="saveSettingsBtn">Save</button>
+    </div>
+    <div id="settingsResult" style="margin-top:8px;"></div>
+  </div>
+</div>
+
+<script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,1565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LexCore — Case Management & Court Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=IBM+Plex+Mono:wght@300;400;500;600&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #0c0d0f;
+  --surface:  #13151a;
+  --panel:    #1a1d24;
+  --border:   #252830;
+  --border2:  #2e323d;
+  --text:     #e8e4da;
+  --muted:    #7a7d87;
+  --dim:      #4a4d57;
+  --gold:     #c9a86c;
+  --gold2:    #e8c87a;
+  --red:      #c0392b;
+  --red-dim:  #7a1f16;
+  --green:    #27ae60;
+  --green-dim:#1a5e38;
+  --amber:    #d4860a;
+  --amber-dim:#7a4d06;
+  --blue:     #2980b9;
+  --blue-dim: #1a4d73;
+  --mono:     'IBM Plex Mono', monospace;
+  --serif:    'Libre Baskerville', serif;
+  --display:  'DM Serif Display', serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 13px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.6;
+}
+
+/* ═══════════════════════ HEADER ═══════════════════════ */
+header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 28px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.logo {
+  font-family: var(--display);
+  font-size: 22px;
+  color: var(--gold);
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+  font-style: italic;
+}
+.logo span { color: var(--text); font-style: normal; }
+
+.nav-tabs {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+}
+.nav-tab {
+  padding: 6px 14px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.nav-tab:hover { color: var(--text); background: var(--panel); }
+.nav-tab.active {
+  color: var(--gold);
+  background: rgba(201,168,108,0.1);
+  border: 1px solid rgba(201,168,108,0.2);
+}
+
+.auth-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.auth-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--red);
+  transition: background 0.3s;
+}
+.auth-dot.ok { background: var(--green); }
+
+/* ═══════════════════════ LAYOUT ═══════════════════════ */
+.main-layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.sidebar {
+  width: 280px;
+  flex-shrink: 0;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.content-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 28px;
+}
+
+/* ═══════════════════════ SIDEBAR ═══════════════════════ */
+.sidebar-section {
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.sidebar-title {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin-bottom: 12px;
+}
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+.stat-row:last-child { border-bottom: none; }
+.stat-label { color: var(--muted); font-size: 12px; }
+.stat-value { font-weight: 600; color: var(--text); }
+.stat-value.open   { color: var(--green); }
+.stat-value.pending{ color: var(--amber); }
+.stat-value.closed { color: var(--muted); }
+.stat-value.high   { color: var(--red); }
+.stat-value.medium { color: var(--amber); }
+.stat-value.low    { color: var(--green); }
+
+.case-list-item {
+  padding: 10px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.12s;
+  margin-bottom: 4px;
+}
+.case-list-item:hover { background: var(--panel); }
+.case-list-item.selected { background: rgba(201,168,108,0.08);
+  border: 1px solid rgba(201,168,108,0.2); }
+.cli-number { font-size: 11px; color: var(--gold); font-weight: 600; }
+.cli-client { font-size: 12px; color: var(--text); margin-top: 1px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cli-meta { display: flex; gap: 8px; margin-top: 4px; align-items: center; }
+
+/* ═══════════════════════ BADGES ═══════════════════════ */
+.badge {
+  display: inline-flex; align-items: center; padding: 2px 7px;
+  border-radius: 3px; font-size: 10px; font-weight: 600;
+  letter-spacing: 0.05em; text-transform: uppercase;
+}
+.badge-open    { background: var(--green-dim); color: #6ee09a; }
+.badge-pending { background: var(--amber-dim); color: #f4b942; }
+.badge-closed  { background: #1e2028; color: var(--dim); }
+.badge-archived{ background: #1e2028; color: var(--dim); }
+.badge-high    { background: var(--red-dim); color: #e07068; }
+.badge-medium  { background: var(--amber-dim); color: #f4b942; }
+.badge-low     { background: var(--green-dim); color: #6ee09a; }
+.badge-unknown { background: #1e2028; color: var(--dim); }
+.badge-pacer   { background: var(--blue-dim); color: #7ab8e0; }
+.badge-uploaded{ background: #2a2030; color: #c07ae0; }
+
+/* ═══════════════════════ TABS (content) ═══════════════════════ */
+.view { display: none; }
+.view.active { display: block; }
+
+/* ═══════════════════════ PAGE HEADER ═══════════════════════ */
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  gap: 16px;
+}
+.page-title {
+  font-family: var(--display);
+  font-size: 26px;
+  color: var(--text);
+  font-style: italic;
+}
+.page-sub { color: var(--muted); font-size: 12px; margin-top: 4px; }
+
+/* ═══════════════════════ BUTTONS ═══════════════════════ */
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 16px; border-radius: 5px; border: none;
+  font-family: var(--mono); font-size: 12px; font-weight: 500;
+  cursor: pointer; transition: all 0.15s; letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.btn-primary {
+  background: var(--gold);
+  color: #0c0d0f;
+}
+.btn-primary:hover { background: var(--gold2); }
+.btn-secondary {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border2);
+}
+.btn-secondary:hover { border-color: var(--gold); color: var(--gold); }
+.btn-danger {
+  background: rgba(192,57,43,0.15);
+  color: #e07068;
+  border: 1px solid var(--red-dim);
+}
+.btn-danger:hover { background: rgba(192,57,43,0.25); }
+.btn-sm { padding: 5px 10px; font-size: 11px; }
+.btn-icon { padding: 6px 10px; }
+
+/* ═══════════════════════ FORMS ═══════════════════════ */
+.form-group { margin-bottom: 16px; }
+.form-label {
+  display: block; font-size: 11px; font-weight: 600;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 6px;
+}
+.form-input, .form-select, .form-textarea {
+  width: 100%; padding: 9px 12px;
+  background: var(--panel);
+  border: 1px solid var(--border2);
+  border-radius: 5px;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.form-input:focus, .form-select:focus, .form-textarea:focus {
+  border-color: var(--gold);
+}
+.form-select { cursor: pointer; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.form-textarea { resize: vertical; min-height: 80px; }
+
+/* ═══════════════════════ CARDS ═══════════════════════ */
+.card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+.card-title {
+  font-family: var(--serif);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.card-title .icon { color: var(--gold); }
+
+/* ═══════════════════════ CASE DETAIL ═══════════════════════ */
+.case-header {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 24px;
+  margin-bottom: 20px;
+}
+.case-number-display {
+  font-family: var(--display);
+  font-size: 28px;
+  color: var(--gold);
+  font-style: italic;
+}
+.case-client-display {
+  font-size: 18px;
+  color: var(--text);
+  margin-top: 4px;
+}
+.case-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.meta-item { }
+.meta-key {
+  font-size: 10px; font-weight: 600; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--dim);
+}
+.meta-val { font-size: 13px; color: var(--text); margin-top: 2px; }
+
+/* ═══════════════════════ TIMELINE ═══════════════════════ */
+.timeline { position: relative; padding-left: 28px; }
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 8px; top: 0; bottom: 0;
+  width: 1px;
+  background: linear-gradient(to bottom, var(--gold), transparent);
+}
+.tl-event {
+  position: relative;
+  margin-bottom: 18px;
+  animation: fadeIn 0.3s ease both;
+}
+.tl-event::before {
+  content: '';
+  position: absolute;
+  left: -24px; top: 6px;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--gold);
+  border: 2px solid var(--bg);
+}
+.tl-date {
+  font-size: 11px; font-weight: 600;
+  color: var(--gold); letter-spacing: 0.05em;
+}
+.tl-context {
+  font-size: 12px; color: var(--text);
+  margin-top: 2px; line-height: 1.5;
+}
+.tl-source {
+  font-size: 10px; color: var(--dim); margin-top: 3px;
+}
+
+/* ═══════════════════════ DOCUMENT TABLE ═══════════════════════ */
+.doc-table { width: 100%; border-collapse: collapse; }
+.doc-table th {
+  text-align: left; padding: 10px 12px;
+  font-size: 10px; font-weight: 600;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--dim);
+  border-bottom: 1px solid var(--border);
+}
+.doc-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px; vertical-align: middle;
+}
+.doc-table tr:last-child td { border-bottom: none; }
+.doc-table tr:hover td { background: rgba(255,255,255,0.02); }
+.doc-name { color: var(--text); font-weight: 500; }
+.doc-sentiment { font-size: 11px; }
+.sentiment-positive { color: var(--green); }
+.sentiment-negative { color: var(--red); }
+.sentiment-neutral  { color: var(--muted); }
+
+/* ═══════════════════════ NOTES ═══════════════════════ */
+.note-item {
+  padding: 12px;
+  border-left: 3px solid var(--border2);
+  margin-bottom: 8px;
+  background: var(--surface);
+  border-radius: 0 5px 5px 0;
+}
+.note-item.pinned { border-left-color: var(--gold); }
+.note-text { font-size: 13px; color: var(--text); line-height: 1.5; }
+.note-meta { font-size: 10px; color: var(--dim); margin-top: 4px; }
+
+/* ═══════════════════════ SEARCH ═══════════════════════ */
+.search-result {
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin-bottom: 10px;
+  transition: border-color 0.15s;
+  cursor: pointer;
+}
+.search-result:hover { border-color: var(--gold); }
+.sr-title { font-size: 13px; font-weight: 600; color: var(--text); }
+.sr-case  { font-size: 11px; color: var(--gold); margin-top: 2px; }
+.sr-snippet {
+  font-size: 12px; color: var(--muted);
+  margin-top: 6px; line-height: 1.5;
+}
+.sr-snippet mark {
+  background: rgba(201,168,108,0.25);
+  color: var(--gold2);
+  padding: 0 2px;
+}
+
+/* ═══════════════════════ PACER PANEL ═══════════════════════ */
+.pacer-login-form {
+  max-width: 480px;
+}
+.pacer-result {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  font-size: 12px;
+}
+.pacer-case-num { color: var(--gold); font-weight: 600; font-size: 13px; }
+.pacer-party    { color: var(--text); }
+.pacer-court    { color: var(--muted); font-size: 11px; }
+.docket-entry {
+  padding: 10px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+.de-seq { color: var(--gold); font-weight: 600; min-width: 32px; }
+.de-date { color: var(--muted); font-size: 11px; min-width: 88px; }
+.de-desc { color: var(--text); flex: 1; line-height: 1.5; }
+.de-fetch-btn {
+  flex-shrink: 0;
+}
+
+/* ═══════════════════════ MODAL ═══════════════════════ */
+.modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 200;
+  align-items: center; justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--panel);
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  width: min(560px, 95vw);
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 28px;
+  animation: slideUp 0.2s ease;
+}
+.modal-title {
+  font-family: var(--display);
+  font-size: 20px;
+  font-style: italic;
+  color: var(--gold);
+  margin-bottom: 20px;
+}
+.modal-footer {
+  display: flex; gap: 10px; justify-content: flex-end;
+  margin-top: 20px;
+}
+
+/* ═══════════════════════ NLP RESULTS ═══════════════════════ */
+.nlp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+  margin: 16px 0;
+}
+.nlp-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 14px;
+  text-align: center;
+}
+.nlp-val {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--gold);
+  font-family: var(--display);
+}
+.nlp-lbl {
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 4px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.nlp-preview {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 14px;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.6;
+  max-height: 180px;
+  overflow-y: auto;
+  font-style: italic;
+  margin-top: 12px;
+}
+
+/* ═══════════════════════ LOADING / EMPTY ═══════════════════════ */
+.loading {
+  text-align: center; padding: 40px 20px;
+  color: var(--muted); font-size: 12px;
+}
+.loading-spinner {
+  width: 28px; height: 28px;
+  border: 2px solid var(--border2);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 12px;
+}
+.empty-state {
+  text-align: center; padding: 60px 20px;
+  color: var(--dim); font-size: 13px;
+}
+.empty-icon { font-size: 36px; margin-bottom: 12px; opacity: 0.4; }
+
+/* ═══════════════════════ TOAST ═══════════════════════ */
+#toast-container {
+  position: fixed; bottom: 24px; right: 24px;
+  z-index: 500; display: flex; flex-direction: column; gap: 8px;
+}
+.toast {
+  background: var(--panel);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  padding: 12px 16px;
+  font-size: 12px;
+  animation: toastIn 0.25s ease;
+  max-width: 320px;
+}
+.toast.success { border-left: 3px solid var(--green); }
+.toast.error   { border-left: 3px solid var(--red); }
+.toast.info    { border-left: 3px solid var(--blue); }
+
+/* ═══════════════════════ ANIMATIONS ═══════════════════════ */
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: none; } }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes toastIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: none; } }
+
+/* ═══════════════════════ SCROLLBAR ═══════════════════════ */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════ HEADER ═══════════════════════════════════ -->
+<header>
+  <div class="logo"><span>Lex</span>Core</div>
+  <nav class="nav-tabs">
+    <button class="nav-tab active" onclick="switchNav('cases')">📁 Cases</button>
+    <button class="nav-tab" onclick="switchNav('search')">🔍 Search</button>
+    <button class="nav-tab" onclick="switchNav('pacer')">⚖️ PACER / Courts</button>
+    <button class="nav-tab" onclick="switchNav('timeline')">📅 Timeline</button>
+  </nav>
+  <div class="auth-indicator">
+    <div class="auth-dot" id="pacer-dot"></div>
+    <span id="pacer-auth-label">PACER: not authenticated</span>
+  </div>
+</header>
+
+<!-- ═══════════════════════════════════ LAYOUT ═══════════════════════════════════ -->
+<div class="main-layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <!-- Stats -->
+    <div class="sidebar-section">
+      <div class="sidebar-title">Case Statistics</div>
+      <div id="sidebar-stats">
+        <div class="stat-row"><span class="stat-label">Open</span>
+          <span class="stat-value open" id="stat-open">—</span></div>
+        <div class="stat-row"><span class="stat-label">Pending</span>
+          <span class="stat-value pending" id="stat-pending">—</span></div>
+        <div class="stat-row"><span class="stat-label">Closed</span>
+          <span class="stat-value closed" id="stat-closed">—</span></div>
+        <div class="stat-row"><span class="stat-label">High Risk</span>
+          <span class="stat-value high" id="stat-high">—</span></div>
+        <div class="stat-row"><span class="stat-label">Documents</span>
+          <span class="stat-value" id="stat-docs">—</span></div>
+      </div>
+    </div>
+    <!-- Recent cases -->
+    <div class="sidebar-section" style="flex:1;overflow-y:auto">
+      <div class="sidebar-title" style="display:flex;justify-content:space-between">
+        Recent Cases
+        <button class="btn btn-sm btn-secondary" onclick="openNewCaseModal()" style="padding:2px 8px;font-size:10px">+ New</button>
+      </div>
+      <div id="sidebar-cases">
+        <div class="loading"><div class="loading-spinner"></div>Loading…</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="content-area">
+
+    <!-- ── CASES VIEW ── -->
+    <div class="view active" id="view-cases">
+      <div class="page-header">
+        <div>
+          <div class="page-title" id="cases-view-title">All Cases</div>
+          <div class="page-sub" id="cases-view-sub">Select a case from the sidebar or create a new one</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <select class="form-select" id="filter-status" onchange="loadCases()" style="width:140px">
+            <option value="">All Status</option>
+            <option value="open">Open</option>
+            <option value="pending">Pending</option>
+            <option value="closed">Closed</option>
+            <option value="archived">Archived</option>
+          </select>
+          <button class="btn btn-primary" onclick="openNewCaseModal()">+ New Case</button>
+        </div>
+      </div>
+
+      <!-- Case detail panel (hidden by default) -->
+      <div id="case-detail" style="display:none"></div>
+
+      <!-- Cases grid (shown when no case selected) -->
+      <div id="cases-grid"></div>
+    </div>
+
+    <!-- ── SEARCH VIEW ── -->
+    <div class="view" id="view-search">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Full-Text Search</div>
+          <div class="page-sub">Search across all cases and documents</div>
+        </div>
+      </div>
+      <div class="card">
+        <div style="display:flex;gap:10px">
+          <input type="text" class="form-input" id="search-q" placeholder="Search terms… e.g. 'conspiracy', 'wire fraud', party names"
+            onkeydown="if(event.key==='Enter')runSearch()" style="flex:1">
+          <input type="text" class="form-input" id="search-case-id" placeholder="Case ID (optional)" style="width:120px">
+          <button class="btn btn-primary" onclick="runSearch()">Search</button>
+        </div>
+      </div>
+      <div id="search-results"></div>
+    </div>
+
+    <!-- ── PACER VIEW ── -->
+    <div class="view" id="view-pacer">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Court Intelligence</div>
+          <div class="page-sub">PACER (authenticated) · CourtListener (free, no auth required)</div>
+        </div>
+      </div>
+
+      <!-- Auth card -->
+      <div class="card" id="pacer-auth-card">
+        <div class="card-title"><span class="icon">🔐</span> PACER Authentication</div>
+        <div class="pacer-login-form">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">PACER Username</label>
+              <input type="text" class="form-input" id="pacer-user" placeholder="your_username">
+            </div>
+            <div class="form-group">
+              <label class="form-label">PACER Password</label>
+              <input type="password" class="form-input" id="pacer-pass" placeholder="••••••••">
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center">
+            <button class="btn btn-primary" onclick="pacerLogin()">Connect to PACER</button>
+            <span style="color:var(--muted);font-size:11px">or use CourtListener below (free, no login needed)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabs within PACER view -->
+      <div style="display:flex;gap:8px;margin-bottom:16px">
+        <button class="btn btn-secondary" id="pt-pacer" onclick="setPacerTab('pacer')" style="border-color:var(--gold);color:var(--gold)">PACER Search</button>
+        <button class="btn btn-secondary" id="pt-cl" onclick="setPacerTab('cl')">CourtListener</button>
+        <button class="btn btn-secondary" id="pt-docket" onclick="setPacerTab('docket')">Docket Viewer</button>
+      </div>
+
+      <div id="ptab-pacer">
+        <div class="card">
+          <div class="card-title"><span class="icon">⚖️</span> PACER Case Search</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Case Number</label>
+              <input type="text" class="form-input" id="p-case-num" placeholder="e.g. 1:24-cr-00001">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Party Name</label>
+              <input type="text" class="form-input" id="p-party" placeholder="Last name or company">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Court</label>
+              <select class="form-select" id="p-court">
+                <option value="nysd">S.D.N.Y.</option>
+                <option value="nyed">E.D.N.Y.</option>
+                <option value="nynd">N.D.N.Y.</option>
+                <option value="nywd">W.D.N.Y.</option>
+                <option value="cacd">C.D. Cal.</option>
+                <option value="dcd">D.D.C.</option>
+                <option value="ilnd">N.D. Ill.</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Filed After</label>
+              <input type="date" class="form-input" id="p-date-start">
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="pacerSearch()">Search PACER</button>
+        </div>
+        <div id="pacer-search-results"></div>
+      </div>
+
+      <div id="ptab-cl" style="display:none">
+        <div class="card">
+          <div class="card-title"><span class="icon">📚</span> CourtListener Search (Free)</div>
+          <div class="form-row">
+            <div class="form-group" style="grid-column:span 2">
+              <label class="form-label">Search Query</label>
+              <input type="text" class="form-input" id="cl-q" placeholder="e.g. wire fraud Southern District, RICO conspiracy 2024"
+                onkeydown="if(event.key==='Enter')clSearch()">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Court</label>
+              <select class="form-select" id="cl-court">
+                <option value="nysd">S.D.N.Y.</option>
+                <option value="nyed">E.D.N.Y.</option>
+                <option value="ca2">2nd Circuit</option>
+                <option value="cacd">C.D. Cal.</option>
+                <option value="dcd">D.D.C.</option>
+                <option value="">All Courts</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Type</label>
+              <select class="form-select" id="cl-type">
+                <option value="opinions">Opinions</option>
+                <option value="dockets">Dockets (RECAP)</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center">
+            <button class="btn btn-primary" onclick="clSearch()">Search CourtListener</button>
+            <span style="color:var(--muted);font-size:11px">Free · No auth · Powered by Free Law Project</span>
+          </div>
+        </div>
+        <div id="cl-results"></div>
+      </div>
+
+      <div id="ptab-docket" style="display:none">
+        <div class="card">
+          <div class="card-title"><span class="icon">📋</span> Docket Entry Viewer</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Court ID</label>
+              <input type="text" class="form-input" id="dv-court" placeholder="nysd">
+            </div>
+            <div class="form-group">
+              <label class="form-label">PACER Case ID</label>
+              <input type="text" class="form-input" id="dv-case" placeholder="12345">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Link to Case (optional)</label>
+              <select class="form-select" id="dv-case-mgmt">
+                <option value="">— Don't add to case —</option>
+              </select>
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="fetchDocket()">Load Docket</button>
+        </div>
+        <div id="docket-results"></div>
+      </div>
+    </div>
+
+    <!-- ── TIMELINE VIEW ── -->
+    <div class="view" id="view-timeline">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Case Timeline</div>
+          <div class="page-sub">Auto-generated chronological event reconstruction</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="form-group">
+          <label class="form-label">Select Case</label>
+          <select class="form-select" id="tl-case-select" onchange="loadTimeline()">
+            <option value="">— Choose a case —</option>
+          </select>
+        </div>
+      </div>
+      <div id="timeline-output"></div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ═══════════════════════════════════ MODALS ═══════════════════════════════════ -->
+
+<!-- New Case Modal -->
+<div class="modal-overlay" id="modal-new-case">
+  <div class="modal">
+    <div class="modal-title">New Case</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Case Number *</label>
+        <input type="text" class="form-input" id="nc-number" placeholder="1:24-cv-00001">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Client Name *</label>
+        <input type="text" class="form-input" id="nc-client" placeholder="Smith, John">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Matter Number</label>
+        <input type="text" class="form-input" id="nc-matter" placeholder="2024-NYC-001">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Status</label>
+        <select class="form-select" id="nc-status">
+          <option value="open">Open</option>
+          <option value="pending">Pending</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Court</label>
+        <input type="text" class="form-input" id="nc-court" placeholder="S.D.N.Y.">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Judge</label>
+        <input type="text" class="form-input" id="nc-judge" placeholder="Hon. ___">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Description</label>
+      <textarea class="form-textarea" id="nc-desc" placeholder="Brief case description…"></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Tags (comma-separated)</label>
+      <input type="text" class="form-input" id="nc-tags" placeholder="criminal, federal, nysd">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-new-case')">Cancel</button>
+      <button class="btn btn-primary" onclick="createCase()">Create Case</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Document Modal -->
+<div class="modal-overlay" id="modal-add-doc">
+  <div class="modal">
+    <div class="modal-title">Add Document to Case</div>
+    <input type="hidden" id="ad-case-id">
+    <div class="form-group">
+      <label class="form-label">Document Name *</label>
+      <input type="text" class="form-input" id="ad-name" placeholder="Complaint, Motion to Dismiss, etc.">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Full Text</label>
+      <textarea class="form-textarea" id="ad-text" style="min-height:120px"
+        placeholder="Paste document text here — will be analyzed by NLP pipeline…"></textarea>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Source</label>
+        <select class="form-select" id="ad-source">
+          <option value="uploaded">Uploaded</option>
+          <option value="pacer">PACER</option>
+          <option value="email">Email</option>
+          <option value="manual">Manual</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Language</label>
+        <select class="form-select" id="ad-lang">
+          <option value="en">English</option>
+          <option value="zh">Chinese</option>
+          <option value="es">Spanish</option>
+          <option value="ko">Korean</option>
+          <option value="ru">Russian</option>
+          <option value="ar">Arabic</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-add-doc')">Cancel</button>
+      <button class="btn btn-primary" onclick="addDocument()">Add & Analyze</button>
+    </div>
+  </div>
+</div>
+
+<!-- NLP Result Modal -->
+<div class="modal-overlay" id="modal-nlp-result">
+  <div class="modal" style="max-width:620px">
+    <div class="modal-title">Document Analysis Result</div>
+    <div id="nlp-result-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" onclick="closeModal('modal-nlp-result')">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast-container"></div>
+
+<!-- ═══════════════════════════════════ SCRIPT ═══════════════════════════════════ -->
+<script>
+const API = '';  // set to 'http://localhost:5000' if running from a different origin
+
+let allCases = [];
+let selectedCaseId = null;
+
+// ══════════════════════ NAV ══════════════════════
+function switchNav(tab) {
+  document.querySelectorAll('.nav-tab').forEach((t,i) => {
+    t.classList.toggle('active', ['cases','search','pacer','timeline'][i] === tab);
+  });
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById(`view-${tab}`).classList.add('active');
+  if (tab === 'timeline') populateTLSelect();
+}
+
+// ══════════════════════ TOAST ══════════════════════
+function toast(msg, type='info') {
+  const c = document.getElementById('toast-container');
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  c.appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+// ══════════════════════ MODAL ══════════════════════
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function openNewCaseModal() { openModal('modal-new-case'); }
+
+// ══════════════════════ BADGES ══════════════════════
+function statusBadge(s) { return `<span class="badge badge-${s}">${s}</span>`; }
+function riskBadge(r)   { return `<span class="badge badge-${r||'unknown'}">${r||'?'}</span>`; }
+function sourceBadge(s) { return `<span class="badge badge-${s}">${s}</span>`; }
+
+// ══════════════════════ STATS ══════════════════════
+async function loadStats() {
+  try {
+    const r = await fetch(`${API}/cases/stats`);
+    if (!r.ok) return;
+    const d = await r.json();
+    const bs = d.by_status || {};
+    const br = d.by_risk   || {};
+    document.getElementById('stat-open').textContent    = bs.open    || 0;
+    document.getElementById('stat-pending').textContent = bs.pending  || 0;
+    document.getElementById('stat-closed').textContent  = bs.closed   || 0;
+    document.getElementById('stat-high').textContent    = br.high     || 0;
+    document.getElementById('stat-docs').textContent    = d.total_documents || 0;
+  } catch(e) {}
+}
+
+// ══════════════════════ CASES LIST ══════════════════════
+async function loadCases() {
+  const status = document.getElementById('filter-status').value;
+  let url = `${API}/cases/list?per_page=50`;
+  if (status) url += `&status=${status}`;
+  try {
+    const r = await fetch(url);
+    const d = await r.json();
+    allCases = d.cases || [];
+    renderSidebarCases(allCases);
+    populateTLSelect();
+    populateDocketCaseSelect();
+    if (!selectedCaseId) renderCasesGrid(allCases);
+  } catch(e) {
+    document.getElementById('sidebar-cases').innerHTML =
+      `<div style="color:var(--red);padding:12px;font-size:12px">API unavailable — start the Flask server at port 5000</div>`;
+    renderDemoCases();
+  }
+}
+
+function renderDemoCases() {
+  const demo = [
+    {id:1, case_number:'1:24-cr-00142', client_name:'United States v. Chen',
+     status:'open', risk_level:'high', doc_count:7, tags:['criminal','federal']},
+    {id:2, case_number:'1:24-cv-08821', client_name:'Lopez v. MidTown Corp',
+     status:'pending', risk_level:'medium', doc_count:3, tags:['civil','employment']},
+    {id:3, case_number:'1:23-cv-05501', client_name:'Park Estate v. Landlord',
+     status:'open', risk_level:'low', doc_count:2, tags:['landlord-tenant']},
+  ];
+  allCases = demo;
+  renderSidebarCases(demo);
+  renderCasesGrid(demo);
+  populateTLSelect();
+}
+
+function renderSidebarCases(cases) {
+  const el = document.getElementById('sidebar-cases');
+  if (!cases.length) { el.innerHTML = '<div style="color:var(--dim);font-size:12px;padding:8px">No cases found</div>'; return; }
+  el.innerHTML = cases.slice(0,20).map(c => `
+    <div class="case-list-item ${selectedCaseId===c.id?'selected':''}"
+         onclick="selectCase(${c.id})">
+      <div class="cli-number">${c.case_number}</div>
+      <div class="cli-client">${c.client_name}</div>
+      <div class="cli-meta">
+        ${statusBadge(c.status)}
+        ${riskBadge(c.risk_level)}
+        <span style="color:var(--dim);font-size:10px">${c.doc_count||0} docs</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderCasesGrid(cases) {
+  const el = document.getElementById('cases-grid');
+  if (!cases.length) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">📁</div>No cases yet.<br>Click <b>+ New Case</b> to get started.</div>`;
+    return;
+  }
+  el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px">
+    ${cases.map(c => `
+      <div class="card" style="cursor:pointer;transition:border-color .15s"
+           onclick="selectCase(${c.id})"
+           onmouseover="this.style.borderColor='var(--gold)'"
+           onmouseout="this.style.borderColor=''">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div>
+            <div style="color:var(--gold);font-weight:600;font-size:13px">${c.case_number}</div>
+            <div style="font-size:14px;margin-top:2px">${c.client_name}</div>
+          </div>
+          <div style="display:flex;gap:6px;flex-direction:column;align-items:flex-end">
+            ${statusBadge(c.status)}
+            ${riskBadge(c.risk_level)}
+          </div>
+        </div>
+        <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);
+                    display:flex;justify-content:space-between;font-size:11px;color:var(--muted)">
+          <span>${c.doc_count||0} documents</span>
+          <span>${c.court||'—'}</span>
+          <span>${(c.tags||[]).join(', ')||'—'}</span>
+        </div>
+      </div>
+    `).join('')}
+  </div>`;
+}
+
+// ══════════════════════ CASE DETAIL ══════════════════════
+async function selectCase(id) {
+  selectedCaseId = id;
+  document.querySelectorAll('.case-list-item').forEach(el => {
+    el.classList.toggle('selected', parseInt(el.onclick?.toString().match(/\d+/)?.[0]) === id);
+  });
+  renderSidebarCases(allCases);
+
+  const grid   = document.getElementById('cases-grid');
+  const detail = document.getElementById('case-detail');
+  grid.style.display   = 'none';
+  detail.style.display = 'block';
+  detail.innerHTML = `<div class="loading"><div class="loading-spinner"></div>Loading case…</div>`;
+
+  try {
+    const r = await fetch(`${API}/cases/${id}`);
+    const c = await r.json();
+    renderCaseDetail(c);
+  } catch(e) {
+    detail.innerHTML = '<div style="color:var(--red)">Failed to load case</div>';
+  }
+}
+
+function renderCaseDetail(c) {
+  const detail = document.getElementById('case-detail');
+  const docs   = c.documents || [];
+  const notes  = c.notes     || [];
+
+  detail.innerHTML = `
+    <!-- Back button -->
+    <div style="margin-bottom:16px">
+      <button class="btn btn-secondary btn-sm" onclick="backToGrid()">← All Cases</button>
+    </div>
+
+    <!-- Case header -->
+    <div class="case-header">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px">
+        <div>
+          <div class="case-number-display">${c.case_number}</div>
+          <div class="case-client-display">${c.client_name}</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+          ${statusBadge(c.status)} ${riskBadge(c.risk_level)}
+          <select class="form-select" style="width:130px;font-size:11px"
+            onchange="updateStatus(${c.id}, this.value)">
+            <option value="">Change Status…</option>
+            <option value="open">Open</option>
+            <option value="pending">Pending</option>
+            <option value="closed">Closed</option>
+            <option value="archived">Archived</option>
+          </select>
+        </div>
+      </div>
+      <div class="case-meta-grid">
+        <div class="meta-item"><div class="meta-key">Matter #</div>
+          <div class="meta-val">${c.matter_number||'—'}</div></div>
+        <div class="meta-item"><div class="meta-key">Court</div>
+          <div class="meta-val">${c.court||'—'}</div></div>
+        <div class="meta-item"><div class="meta-key">Judge</div>
+          <div class="meta-val">${c.judge||'—'}</div></div>
+        <div class="meta-item"><div class="meta-key">Filed</div>
+          <div class="meta-val">${c.filing_date||'—'}</div></div>
+        <div class="meta-item"><div class="meta-key">Documents</div>
+          <div class="meta-val">${docs.length}</div></div>
+        <div class="meta-item"><div class="meta-key">Updated</div>
+          <div class="meta-val">${(c.updated_at||'').slice(0,16)}</div></div>
+      </div>
+      ${c.description ? `<div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);font-size:13px;color:var(--muted);font-style:italic">${c.description}</div>` : ''}
+      ${c.tags?.length ? `<div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">${c.tags.map(t=>`<span class="badge" style="background:rgba(201,168,108,.1);color:var(--gold);border:1px solid rgba(201,168,108,.2)">${t}</span>`).join('')}</div>` : ''}
+    </div>
+
+    <!-- Documents -->
+    <div class="card">
+      <div class="card-title" style="justify-content:space-between">
+        <span><span class="icon">📄</span> Documents (${docs.length})</span>
+        <button class="btn btn-sm btn-secondary" onclick="openAddDocModal(${c.id})">+ Add Document</button>
+      </div>
+      ${docs.length ? `
+        <table class="doc-table">
+          <thead><tr>
+            <th>Document</th><th>Source</th><th>Sentiment</th>
+            <th>Risk</th><th>Date</th>
+          </tr></thead>
+          <tbody>
+            ${docs.map(d => `<tr>
+              <td class="doc-name">${d.document_name}</td>
+              <td>${sourceBadge(d.source)}</td>
+              <td><span class="doc-sentiment sentiment-${d.sentiment?.toLowerCase()}">${d.sentiment||'—'}</span></td>
+              <td>${d.risk_score!=null ? d.risk_score.toFixed(1) : '—'}</td>
+              <td style="color:var(--muted)">${(d.upload_date||'').slice(0,10)}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      ` : `<div class="empty-state" style="padding:30px"><div class="empty-icon">📄</div>No documents yet</div>`}
+    </div>
+
+    <!-- Notes -->
+    <div class="card">
+      <div class="card-title"><span class="icon">📝</span> Case Notes</div>
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <input type="text" class="form-input" id="new-note-${c.id}" placeholder="Add a note…" style="flex:1">
+        <button class="btn btn-secondary btn-sm" onclick="addNote(${c.id})">Add Note</button>
+      </div>
+      ${notes.map(n => `
+        <div class="note-item ${n.pinned?'pinned':''}">
+          <div class="note-text">${n.note}</div>
+          <div class="note-meta">${n.author} · ${(n.created_at||'').slice(0,16)}</div>
+        </div>
+      `).join('') || '<div style="color:var(--dim);font-size:12px">No notes yet</div>'}
+    </div>
+
+    <!-- Quick timeline link -->
+    <div style="text-align:center;margin-top:8px">
+      <button class="btn btn-secondary" onclick="goTimeline(${c.id})">📅 View Full Timeline for This Case</button>
+    </div>
+  `;
+}
+
+function backToGrid() {
+  selectedCaseId = null;
+  document.getElementById('case-detail').style.display = 'none';
+  document.getElementById('cases-grid').style.display  = 'block';
+  renderSidebarCases(allCases);
+}
+
+async function updateStatus(caseId, status) {
+  if (!status) return;
+  try {
+    await fetch(`${API}/cases/${caseId}/status`, {
+      method:'PUT', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({status})
+    });
+    toast(`Status updated to ${status}`, 'success');
+    selectCase(caseId);
+    loadCases(); loadStats();
+  } catch(e) { toast('Failed to update status', 'error'); }
+}
+
+// ══════════════════════ CREATE CASE ══════════════════════
+async function createCase() {
+  const num = document.getElementById('nc-number').value.trim();
+  const cli = document.getElementById('nc-client').value.trim();
+  if (!num || !cli) { toast('Case number and client name are required', 'error'); return; }
+  const tags = document.getElementById('nc-tags').value.split(',').map(t=>t.trim()).filter(Boolean);
+  try {
+    const r = await fetch(`${API}/cases/create`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        case_number:   num,
+        client_name:   cli,
+        matter_number: document.getElementById('nc-matter').value.trim(),
+        status:        document.getElementById('nc-status').value,
+        court:         document.getElementById('nc-court').value.trim(),
+        judge:         document.getElementById('nc-judge').value.trim(),
+        description:   document.getElementById('nc-desc').value.trim(),
+        tags,
+      })
+    });
+    const d = await r.json();
+    if (d.success) {
+      toast(`Case ${num} created`, 'success');
+      closeModal('modal-new-case');
+      // Clear form
+      ['nc-number','nc-client','nc-matter','nc-court','nc-judge','nc-desc','nc-tags']
+        .forEach(id => document.getElementById(id).value='');
+      loadCases(); loadStats();
+      selectCase(d.case_id);
+    } else { toast(d.error||'Failed to create case', 'error'); }
+  } catch(e) { toast('API unavailable', 'error'); }
+}
+
+// ══════════════════════ ADD DOCUMENT ══════════════════════
+function openAddDocModal(caseId) {
+  document.getElementById('ad-case-id').value = caseId;
+  openModal('modal-add-doc');
+}
+
+async function addDocument() {
+  const caseId = document.getElementById('ad-case-id').value;
+  const name   = document.getElementById('ad-name').value.trim();
+  if (!name) { toast('Document name required', 'error'); return; }
+  try {
+    const r = await fetch(`${API}/cases/${caseId}/add_document`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        document_name: name,
+        doc_text:  document.getElementById('ad-text').value,
+        source:    document.getElementById('ad-source').value,
+        language:  document.getElementById('ad-lang').value,
+      })
+    });
+    const d = await r.json();
+    if (d.success) {
+      toast(`Document added. Case risk: ${d.new_risk_level}`, 'success');
+      closeModal('modal-add-doc');
+      document.getElementById('ad-name').value='';
+      document.getElementById('ad-text').value='';
+      selectCase(parseInt(caseId));
+      loadStats();
+    } else { toast(d.error||'Failed', 'error'); }
+  } catch(e) { toast('API unavailable', 'error'); }
+}
+
+// ══════════════════════ NOTES ══════════════════════
+async function addNote(caseId) {
+  const input = document.getElementById(`new-note-${caseId}`);
+  const note  = input.value.trim();
+  if (!note) return;
+  try {
+    await fetch(`${API}/cases/${caseId}/note`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({note, author:'Counsel'})
+    });
+    toast('Note added', 'success');
+    input.value = '';
+    selectCase(caseId);
+  } catch(e) { toast('API unavailable', 'error'); }
+}
+
+// ══════════════════════ SEARCH ══════════════════════
+async function runSearch() {
+  const q      = document.getElementById('search-q').value.trim();
+  const caseId = document.getElementById('search-case-id').value.trim();
+  if (!q) { toast('Enter a search query', 'error'); return; }
+  const el = document.getElementById('search-results');
+  el.innerHTML = '<div class="loading"><div class="loading-spinner"></div>Searching…</div>';
+  try {
+    let url = `${API}/cases/search?q=${encodeURIComponent(q)}&limit=20`;
+    if (caseId) url += `&case_id=${caseId}`;
+    const r = await fetch(url);
+    const d = await r.json();
+    if (!d.results?.length) {
+      el.innerHTML = '<div class="empty-state"><div class="empty-icon">🔍</div>No results found</div>';
+      return;
+    }
+    el.innerHTML = `
+      <div style="color:var(--muted);font-size:12px;margin-bottom:12px">${d.count} result(s) for "<span style="color:var(--gold)">${q}</span>"</div>
+      ${d.results.map(r => `
+        <div class="search-result" onclick="selectCase(${r.case_id});switchNav('cases')">
+          <div class="sr-title">${r.document_name}</div>
+          <div class="sr-case">${r.case_number} — ${r.client_name}</div>
+          <div class="sr-snippet">${r.snippet}</div>
+        </div>
+      `).join('')}
+    `;
+  } catch(e) { el.innerHTML = '<div style="color:var(--red)">Search unavailable — start the Flask server</div>'; }
+}
+
+// ══════════════════════ PACER ══════════════════════
+function setPacerTab(tab) {
+  ['pacer','cl','docket'].forEach(t => {
+    document.getElementById(`ptab-${t}`).style.display = t===tab?'':'none';
+    const btn = document.getElementById(`pt-${t}`);
+    btn.style.borderColor = t===tab?'var(--gold)':'';
+    btn.style.color       = t===tab?'var(--gold)':'';
+  });
+}
+
+async function pacerLogin() {
+  const user = document.getElementById('pacer-user').value.trim();
+  const pass = document.getElementById('pacer-pass').value.trim();
+  try {
+    const r = await fetch(`${API}/pacer/login`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({username:user, password:pass})
+    });
+    const d = await r.json();
+    if (d.success) {
+      document.getElementById('pacer-dot').classList.add('ok');
+      document.getElementById('pacer-auth-label').textContent = `PACER: ${d.username}`;
+      toast('PACER authenticated!', 'success');
+    } else { toast(`PACER auth failed: ${d.error}`, 'error'); }
+  } catch(e) { toast('Cannot reach API', 'error'); }
+}
+
+async function pacerSearch() {
+  const el = document.getElementById('pacer-search-results');
+  el.innerHTML = '<div class="loading"><div class="loading-spinner"></div>Searching PACER…</div>';
+  try {
+    const r = await fetch(`${API}/pacer/search`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        case_number:      document.getElementById('p-case-num').value.trim(),
+        party_name:       document.getElementById('p-party').value.trim(),
+        court_id:         document.getElementById('p-court').value,
+        date_filed_start: document.getElementById('p-date-start').value,
+      })
+    });
+    const d = await r.json();
+    if (!d.success) { el.innerHTML = `<div style="color:var(--red)">${d.error}</div>`; return; }
+    const cases = d.data?.cases || [];
+    if (!cases.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">⚖️</div>No PACER cases found</div>'; return; }
+    el.innerHTML = cases.map(c => `
+      <div class="pacer-result">
+        <div class="pacer-case-num">${c.case_number||c.caseNumber||'—'}</div>
+        <div class="pacer-party">${c.case_name||c.caseName||'—'}</div>
+        <div class="pacer-court">${c.court_id||''} · Filed: ${c.date_filed||'—'}</div>
+        <div style="margin-top:8px;display:flex;gap:8px">
+          <button class="btn btn-sm btn-secondary" onclick="fetchDocketById('${c.court_id}','${c.case_id}')">View Docket</button>
+        </div>
+      </div>
+    `).join('');
+  } catch(e) { el.innerHTML = `<div style="color:var(--red)">PACER search failed — authenticate first</div>`; }
+}
+
+async function clSearch() {
+  const el = document.getElementById('cl-results');
+  const q  = document.getElementById('cl-q').value.trim();
+  if (!q) { toast('Enter a search query', 'error'); return; }
+  el.innerHTML = '<div class="loading"><div class="loading-spinner"></div>Searching CourtListener…</div>';
+  try {
+    const court = document.getElementById('cl-court').value;
+    const type  = document.getElementById('cl-type').value;
+    const r     = await fetch(
+      `${API}/pacer/courtlistener/search?q=${encodeURIComponent(q)}&court=${court}&type=${type}&limit=10`);
+    const d = await r.json();
+    if (!d.success) { el.innerHTML = `<div style="color:var(--red)">${d.error}</div>`; return; }
+    if (!d.results?.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">📚</div>No results found</div>'; return; }
+    el.innerHTML = `
+      <div style="color:var(--muted);font-size:12px;margin-bottom:12px">${d.count} result(s)</div>
+      ${d.results.map(r => `
+        <div class="pacer-result">
+          <div class="pacer-case-num">${r.caseName||r.case_name||r.docketNumber||'—'}</div>
+          <div class="pacer-party">${r.court||''} · ${r.dateFiled||r.date_filed||''}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px;line-height:1.5">${r.snippet||''}</div>
+          ${r.id ? `
+          <div style="margin-top:8px;display:flex;gap:8px">
+            <button class="btn btn-sm btn-secondary"
+              onclick="fetchOpinion(${r.id})">Analyze Opinion</button>
+          </div>` : ''}
+        </div>
+      `).join('')}
+    `;
+  } catch(e) { el.innerHTML = `<div style="color:var(--red)">CourtListener search failed</div>`; }
+}
+
+async function fetchDocket() {
+  const court  = document.getElementById('dv-court').value.trim();
+  const caseId = document.getElementById('dv-case').value.trim();
+  if (!court||!caseId) { toast('Court ID and Case ID required', 'error'); return; }
+  const el = document.getElementById('docket-results');
+  el.innerHTML = '<div class="loading"><div class="loading-spinner"></div>Loading docket…</div>';
+  try {
+    const r = await fetch(`${API}/pacer/docket/${court}/${caseId}`);
+    const d = await r.json();
+    if (!d.success) { el.innerHTML = `<div style="color:var(--red)">${d.error}</div>`; return; }
+    const entries = d.data?.docketEntries || [];
+    el.innerHTML = `
+      <div class="card-title" style="margin-bottom:14px">
+        <span class="icon">📋</span> ${entries.length} Docket Entries
+      </div>
+      ${entries.map(e => `
+        <div class="docket-entry">
+          <div class="de-seq">#${e.seqno||e.doc_num||'—'}</div>
+          <div class="de-date">${e.date_filed||e.dateFiled||'—'}</div>
+          <div class="de-desc">${e.description||e.short_description||'—'}</div>
+          <div class="de-fetch-btn">
+            <button class="btn btn-sm btn-secondary"
+              onclick="fetchDoc('${court}','${caseId}','${e.doc_id||e.docId}','0')">
+              Analyze
+            </button>
+          </div>
+        </div>
+      `).join('')}
+    `;
+  } catch(e) { el.innerHTML = `<div style="color:var(--red)">Docket fetch failed — authenticate with PACER first</div>`; }
+}
+
+async function fetchDoc(court, caseId, docId, seqNo) {
+  toast('Fetching and analyzing document…', 'info');
+  const caseMgmtId = document.getElementById('dv-case-mgmt').value;
+  try {
+    const r = await fetch(`${API}/pacer/fetch_document`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        court_id: court, case_id: caseId, doc_id: docId, seq_no: seqNo,
+        run_nlp: true,
+        case_management_id: caseMgmtId||null,
+      })
+    });
+    const d = await r.json();
+    showNLPResult(d);
+  } catch(e) { toast('Document fetch failed', 'error'); }
+}
+
+async function fetchOpinion(id) {
+  toast('Fetching opinion…', 'info');
+  try {
+    const r = await fetch(`${API}/pacer/courtlistener/opinion/${id}?run_nlp=true`);
+    const d = await r.json();
+    showNLPResult(d);
+  } catch(e) { toast('Failed to fetch opinion', 'error'); }
+}
+
+function showNLPResult(d) {
+  const body = document.getElementById('nlp-result-body');
+  const nlp  = d.nlp || {};
+  body.innerHTML = `
+    <div class="nlp-grid">
+      <div class="nlp-card"><div class="nlp-val">${nlp.sentiment||'—'}</div><div class="nlp-lbl">Sentiment</div></div>
+      <div class="nlp-card"><div class="nlp-val">${nlp.risk_score!=null?nlp.risk_score.toFixed(1):'—'}</div><div class="nlp-lbl">Risk Score</div></div>
+      <div class="nlp-card"><div class="nlp-val">${nlp.event_count||0}</div><div class="nlp-lbl">Events</div></div>
+      <div class="nlp-card"><div class="nlp-val">${nlp.entity_count||0}</div><div class="nlp-lbl">Entities</div></div>
+      <div class="nlp-card"><div class="nlp-val">${d.text_chars||0}</div><div class="nlp-lbl">Characters</div></div>
+      <div class="nlp-card"><div class="nlp-val">${nlp.language||'en'}</div><div class="nlp-lbl">Language</div></div>
+    </div>
+    ${nlp.summary ? `<div class="nlp-preview"><b>Summary:</b><br>${nlp.summary}</div>` : ''}
+    ${d.preview ? `<div class="nlp-preview" style="margin-top:10px"><b>Document Preview:</b><br>${d.preview}</div>` : ''}
+    ${d.added_to_case!==undefined ? `<div style="margin-top:12px;color:${d.added_to_case?'var(--green)':'var(--red)'};font-size:12px">${d.added_to_case?'✓ Added to case management':'✗ Failed to add to case'}</div>` : ''}
+  `;
+  openModal('modal-nlp-result');
+}
+
+function fetchDocketById(court, caseId) {
+  document.getElementById('dv-court').value = court;
+  document.getElementById('dv-case').value  = caseId;
+  setPacerTab('docket');
+  fetchDocket();
+}
+
+// ══════════════════════ TIMELINE ══════════════════════
+function populateTLSelect() {
+  const sel = document.getElementById('tl-case-select');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— Choose a case —</option>' +
+    allCases.map(c => `<option value="${c.id}" ${c.id==cur?'selected':''}>${c.case_number} — ${c.client_name}</option>`).join('');
+}
+
+async function loadTimeline() {
+  const id = document.getElementById('tl-case-select').value;
+  const el = document.getElementById('timeline-output');
+  if (!id) { el.innerHTML=''; return; }
+  el.innerHTML = '<div class="loading"><div class="loading-spinner"></div>Building timeline…</div>';
+  try {
+    const r = await fetch(`${API}/cases/${id}/timeline`);
+    const d = await r.json();
+    if (!d.timeline?.length) {
+      el.innerHTML = '<div class="empty-state"><div class="empty-icon">📅</div>No dated events found in this case\'s documents</div>';
+      return;
+    }
+    el.innerHTML = `
+      <div class="card">
+        <div class="card-title"><span class="icon">📅</span> ${d.event_count} Events Extracted</div>
+        <div class="timeline">
+          ${d.timeline.map(ev => `
+            <div class="tl-event">
+              <div class="tl-date">${ev.date||ev.event_date||'—'}</div>
+              <div class="tl-context">${ev.context||ev.description||ev.event||'—'}</div>
+              <div class="tl-source">Source: ${ev.source_doc||'—'} · Method: ${ev.source||'—'}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  } catch(e) { el.innerHTML = '<div style="color:var(--red)">Timeline fetch failed</div>'; }
+}
+
+function goTimeline(caseId) {
+  switchNav('timeline');
+  document.getElementById('tl-case-select').value = caseId;
+  loadTimeline();
+}
+
+// ══════════════════════ DOCKET CASE SELECT ══════════════════════
+function populateDocketCaseSelect() {
+  const sel = document.getElementById('dv-case-mgmt');
+  sel.innerHTML = '<option value="">— Don\'t add to case —</option>' +
+    allCases.map(c => `<option value="${c.id}">${c.case_number} — ${c.client_name}</option>`).join('');
+}
+
+// ══════════════════════ PACER AUTH CHECK ══════════════════════
+async function checkPacerStatus() {
+  try {
+    const r = await fetch(`${API}/pacer/status`);
+    const d = await r.json();
+    if (d.authenticated) {
+      document.getElementById('pacer-dot').classList.add('ok');
+      document.getElementById('pacer-auth-label').textContent = `PACER: ${d.username}`;
+    }
+  } catch(e) {}
+}
+
+// ══════════════════════ INIT ══════════════════════
+(async () => {
+  await loadStats();
+  await loadCases();
+  await checkPacerStatus();
+})();
+</script>
+</body>
+</html>

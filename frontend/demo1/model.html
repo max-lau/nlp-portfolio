@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Legal Model — NLP Legal Analyzer</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f1f5f9; color: #1a1a1a; }
+    .nav { background: #0f172a; padding: 0 2rem; display: flex; align-items: center; gap: 1.5rem; height: 56px; }
+    .nav-brand { font-size: 15px; font-weight: 700; color: #fff; }
+    .nav-links { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
+    .nav-link { font-size: 11px; font-weight: 500; padding: 5px 10px; border-radius: 6px; color: #94a3b8; text-decoration: none; border: none; background: transparent; cursor: pointer; white-space: nowrap; }
+    .nav-link:hover { background: #1e293b; color: #fff; }
+    .nav-link.active { background: #7c3aed; color: #fff; }
+    .page { padding: 1.5rem 2rem; max-width: 860px; margin: 0 auto; }
+    .page-title { font-size: 22px; font-weight: 700; color: #0f172a; margin-bottom: 4px; }
+    .page-sub { font-size: 13px; color: #64748b; margin-bottom: 1.5rem; }
+    .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 1.25rem; margin-bottom: 12px; }
+    .card-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #9ca3af; margin-bottom: 12px; }
+    textarea { width: 100%; min-height: 110px; padding: 12px; border: 1px solid #ddd; border-radius: 10px; font-size: 14px; line-height: 1.6; resize: vertical; background: #fff; }
+    textarea:focus { outline: none; border-color: #7c3aed; }
+    .btn-row { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+    .btn { padding: 10px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s; }
+    .btn.primary { background: #7c3aed; color: #fff; }
+    .btn.primary:hover { background: #6d28d9; }
+    .btn.secondary { background: #f1f5f9; color: #374151; border: 1px solid #e2e8f0; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .label-pill { display: inline-block; font-size: 13px; font-weight: 700; padding: 6px 16px; border-radius: 20px; }
+    .pill-prosecution { background: #fee2e2; color: #991b1b; }
+    .pill-defense     { background: #d1fae5; color: #065f46; }
+    .pill-neutral     { background: #f3f4f6; color: #374151; }
+    .score-bar-wrap { margin: 8px 0; }
+    .score-bar-label { display: flex; justify-content: space-between; font-size: 12px; color: #64748b; margin-bottom: 3px; }
+    .score-bar-track { height: 8px; background: #f3f4f6; border-radius: 4px; overflow: hidden; }
+    .score-bar-fill { height: 100%; border-radius: 4px; transition: width 0.7s ease; }
+    .status-row { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: #f9fafb; border-radius: 8px; margin-bottom: 8px; font-size: 13px; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .dot-green { background: #22c55e; }
+    .dot-red { background: #ef4444; }
+    .dot-yellow { background: #f59e0b; animation: blink 1s infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+    .progress-bar { height: 6px; background: #f3f4f6; border-radius: 3px; overflow: hidden; margin-top: 8px; }
+    .progress-fill { height: 100%; background: #7c3aed; border-radius: 3px; transition: width 0.5s; }
+    .chip { font-size: 12px; padding: 5px 12px; border-radius: 20px; border: 1px solid #ddd; cursor: pointer; background: #fff; color: #555; }
+    .chip:hover { border-color: #7c3aed; color: #7c3aed; }
+    .examples { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; align-items: center; }
+    .meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
+    .meta-item { background: #f9fafb; border-radius: 8px; padding: 10px 12px; }
+    .meta-label { font-size: 10px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.08em; }
+    .meta-value { font-size: 14px; font-weight: 700; color: #0f172a; margin-top: 2px; }
+  </style>
+</head>
+<body>
+<nav class="nav">
+  <div class="nav-brand">NLP Legal Analyzer</div>
+  <div class="nav-links">
+    <a class="nav-link" href="home.html">🏠 Home</a>
+    <a class="nav-link" href="index.html">Analyzer</a>
+    <a class="nav-link" href="citations.html">Citations</a>
+    <a class="nav-link" href="compare.html">Compare</a>
+    <a class="nav-link" href="risk.html">Risk</a>
+    <a class="nav-link active" href="model.html">Model</a>
+    <a class="nav-link" href="audit.html">Audit</a>
+    <a class="nav-link" href="dashboard.html">Dashboard</a>
+  </div>
+</nav>
+
+<div class="page">
+  <div class="page-title">🧠 Fine-Tuned Legal Model</div>
+  <div class="page-sub">DistilBERT fine-tuned on 60 legal sentences — classifies text as PROSECUTION FAVORABLE, DEFENSE FAVORABLE, or NEUTRAL.</div>
+
+  <!-- Model Status -->
+  <div class="card">
+    <div class="card-title">Model Status</div>
+    <div id="modelStatus"><div style="color:#9ca3af;font-size:13px">Checking model...</div></div>
+    <div class="btn-row" style="margin-top:12px">
+      <button class="btn secondary" onclick="loadModelInfo()">Refresh Status</button>
+      <button class="btn primary" id="trainBtn" onclick="startTraining()">Train Model (3 epochs)</button>
+      <button class="btn secondary" onclick="runExamples()">Run Examples</button>
+    </div>
+    <div id="trainingProgress" style="display:none;margin-top:12px;">
+      <div style="font-size:12px;color:#64748b;" id="progressMsg">Training...</div>
+      <div class="progress-bar"><div class="progress-fill" id="progressBar" style="width:0%"></div></div>
+    </div>
+  </div>
+
+  <!-- Predict -->
+  <div class="card">
+    <div class="card-title">Classify Legal Text</div>
+    <div class="examples">
+      <span style="font-size:12px;color:#9ca3af">Examples:</span>
+      <span class="chip" onclick="setEx('prosecution')">Prosecution</span>
+      <span class="chip" onclick="setEx('defense')">Defense</span>
+      <span class="chip" onclick="setEx('neutral')">Neutral</span>
+    </div>
+    <textarea id="predictTxt" placeholder="Enter legal text to classify..."></textarea>
+    <div class="btn-row">
+      <button class="btn primary" id="predictBtn" onclick="predict()">Classify</button>
+    </div>
+    <div id="predictResult" style="margin-top:14px;display:none;">
+      <div style="margin-bottom:12px;">
+        <div style="font-size:12px;color:#64748b;margin-bottom:6px;">Predicted Label</div>
+        <span class="label-pill" id="predLabel">—</span>
+        <span style="font-size:12px;color:#9ca3af;margin-left:8px;">confidence: <strong id="predConf">—</strong></span>
+      </div>
+      <div id="allScores"></div>
+    </div>
+  </div>
+
+  <!-- Examples -->
+  <div class="card" id="examplesCard" style="display:none">
+    <div class="card-title">Example Predictions</div>
+    <div id="examplesList"></div>
+  </div>
+</div>
+
+<script>
+  const API = 'http://localhost:8000';
+  const EXAMPLES = {
+    prosecution: "The jury convicted the defendant on all counts of wire fraud and money laundering. The United States Attorney sought maximum penalties.",
+    defense:     "The defendant was acquitted of all charges. The court found the evidence insufficient and suppressed the illegally obtained evidence.",
+    neutral:     "The parties filed a joint stipulation extending discovery. The court scheduled a status conference for the following month."
+  };
+
+  function setEx(k) { document.getElementById('predictTxt').value = EXAMPLES[k]; }
+
+  function pillClass(label) {
+    if (!label) return '';
+    if (label.includes('PROSECUTION')) return 'pill-prosecution';
+    if (label.includes('DEFENSE')) return 'pill-defense';
+    return 'pill-neutral';
+  }
+
+  function barColor(label) {
+    if (!label) return '#9ca3af';
+    if (label.includes('PROSECUTION')) return '#dc2626';
+    if (label.includes('DEFENSE')) return '#16a34a';
+    return '#6b7280';
+  }
+
+  async function loadModelInfo() {
+    try {
+      const r = await fetch(`${API}/model/info`);
+      const d = await r.json();
+      const el = document.getElementById('modelStatus');
+      if (d.ready) {
+        const m = d.model || {};
+        el.innerHTML = `
+          <div class="status-row"><div class="status-dot dot-green"></div><strong>Model Ready</strong> — ${m.model || 'DistilBERT'}</div>
+          <div class="meta-grid">
+            <div class="meta-item"><div class="meta-label">Accuracy</div><div class="meta-value">${((m.accuracy||0)*100).toFixed(1)}%</div></div>
+            <div class="meta-item"><div class="meta-label">F1 Score</div><div class="meta-value">${(m.f1_score||0).toFixed(3)}</div></div>
+            <div class="meta-item"><div class="meta-label">Train Samples</div><div class="meta-value">${m.train_size||0}</div></div>
+            <div class="meta-item"><div class="meta-label">Epochs</div><div class="meta-value">${m.epochs||0}</div></div>
+            <div class="meta-item"><div class="meta-label">Labels</div><div class="meta-value">${(m.labels||[]).length}</div></div>
+            <div class="meta-item"><div class="meta-label">Trained</div><div class="meta-value">${(m.trained_at||'').slice(0,10)}</div></div>
+          </div>`;
+      } else {
+        el.innerHTML = `<div class="status-row"><div class="status-dot dot-red"></div>Model not trained yet — click "Train Model" to start</div>`;
+      }
+    } catch(e) {
+      document.getElementById('modelStatus').innerHTML = `<div class="status-row"><div class="status-dot dot-red"></div>API offline</div>`;
+    }
+  }
+
+  async function startTraining() {
+    const btn = document.getElementById('trainBtn');
+    btn.disabled = true; btn.textContent = 'Training...';
+    document.getElementById('trainingProgress').style.display = 'block';
+
+    await fetch(`${API}/model/train`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({epochs:3}) });
+
+    const poll = setInterval(async () => {
+      const r = await fetch(`${API}/model/status`);
+      const d = await r.json();
+      document.getElementById('progressMsg').textContent = d.message || 'Training...';
+      document.getElementById('progressBar').style.width = (d.progress || 0) + '%';
+      if (d.status === 'complete' || d.status === 'error') {
+        clearInterval(poll);
+        btn.disabled = false; btn.textContent = 'Train Model (3 epochs)';
+        loadModelInfo();
+      }
+    }, 3000);
+  }
+
+  async function predict() {
+    const text = document.getElementById('predictTxt').value.trim();
+    if (!text) return;
+    const btn = document.getElementById('predictBtn');
+    btn.disabled = true; btn.textContent = 'Classifying...';
+    try {
+      const r = await fetch(`${API}/model/predict`, {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ text, label: 'Input' })
+      });
+      const d = await r.json();
+      document.getElementById('predLabel').textContent = d.label;
+      document.getElementById('predLabel').className = 'label-pill ' + pillClass(d.label);
+      document.getElementById('predConf').textContent = (d.confidence * 100).toFixed(1) + '%';
+
+      const scores = d.all_scores || {};
+      document.getElementById('allScores').innerHTML = Object.entries(scores)
+        .sort((a,b) => b[1]-a[1])
+        .map(([label, score]) => `
+          <div class="score-bar-wrap">
+            <div class="score-bar-label"><span>${label.replace(/_/g,' ')}</span><span>${(score*100).toFixed(1)}%</span></div>
+            <div class="score-bar-track"><div class="score-bar-fill" style="width:${score*100}%;background:${barColor(label)}"></div></div>
+          </div>`).join('');
+
+      document.getElementById('predictResult').style.display = 'block';
+    } catch(e) { alert('Error: ' + e.message + '\n\nMake sure model is trained first.'); }
+    finally { btn.disabled = false; btn.textContent = 'Classify'; }
+  }
+
+  async function runExamples() {
+    try {
+      const r = await fetch(`${API}/model/examples`);
+      const d = await r.json();
+      const examples = d.examples || [];
+      document.getElementById('examplesList').innerHTML = examples.map(e => `
+        <div style="padding:10px 0;border-bottom:1px solid #f3f4f6;">
+          <div style="font-size:12px;color:#374151;margin-bottom:6px;">${e.text}</div>
+          <span class="label-pill ${pillClass(e.label)}">${e.label||'—'}</span>
+          <span style="font-size:11px;color:#9ca3af;margin-left:8px;">${((e.confidence||0)*100).toFixed(1)}% confidence</span>
+        </div>`).join('');
+      document.getElementById('examplesCard').style.display = 'block';
+    } catch(e) { alert('Run training first: ' + e.message); }
+  }
+
+  loadModelInfo();
+</script>
+</body>
+</html>

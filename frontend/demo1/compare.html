@@ -1,1 +1,264 @@
-/* compare.html */
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document Comparison — NLP Legal Analyzer</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f1f5f9; color: #1a1a1a; }
+    .nav { background: #0f172a; padding: 0 2rem; display: flex; align-items: center; gap: 1.5rem; height: 56px; }
+    .nav-brand { font-size: 15px; font-weight: 700; color: #fff; }
+    .nav-links { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
+    .nav-link { font-size: 11px; font-weight: 500; padding: 5px 10px; border-radius: 6px; color: #94a3b8; text-decoration: none; border: none; background: transparent; cursor: pointer; white-space: nowrap; }
+    .nav-link:hover { background: #1e293b; color: #fff; }
+    .nav-link.active { background: #7c3aed; color: #fff; }
+    .page { padding: 1.5rem 2rem; max-width: 1000px; margin: 0 auto; }
+    .page-title { font-size: 22px; font-weight: 700; color: #0f172a; margin-bottom: 4px; }
+    .page-sub { font-size: 13px; color: #64748b; margin-bottom: 1.5rem; }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 640px) { .two-col { grid-template-columns: 1fr; } }
+    .doc-block label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #64748b; display: block; margin-bottom: 6px; }
+    textarea { width: 100%; min-height: 160px; padding: 12px; border: 1px solid #ddd; border-radius: 10px; font-size: 13px; line-height: 1.6; resize: vertical; background: #fff; }
+    textarea:focus { outline: none; border-color: #7c3aed; box-shadow: 0 0 0 3px rgba(124,58,237,0.1); }
+    .btn-row { display: flex; gap: 10px; margin-top: 12px; }
+    .btn { padding: 10px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s; }
+    .btn.primary { background: #7c3aed; color: #fff; }
+    .btn.primary:hover { background: #6d28d9; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .results { margin-top: 1.5rem; display: none; }
+    .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 1.25rem; margin-bottom: 12px; }
+    .card-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #9ca3af; margin-bottom: 12px; }
+    .sim-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .sim-stat { text-align: center; padding: 16px; background: #f9fafb; border-radius: 8px; }
+    .sim-n { font-size: 28px; font-weight: 700; color: #0f172a; }
+    .sim-l { font-size: 11px; color: #9ca3af; margin-top: 2px; }
+    .sim-label { text-align: center; margin-top: 10px; font-size: 14px; font-weight: 700; padding: 6px 16px; border-radius: 20px; display: inline-block; }
+    .bar-track { width: 100%; height: 10px; background: #f3f4f6; border-radius: 5px; overflow: hidden; margin: 8px 0; }
+    .bar-fill { height: 100%; border-radius: 5px; background: #7c3aed; transition: width 0.8s ease; }
+    .tag-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+    .tag { font-size: 12px; padding: 3px 10px; border-radius: 12px; }
+    .tag-shared { background: #d1fae5; color: #065f46; }
+    .tag-a { background: #dbeafe; color: #1e40af; }
+    .tag-b { background: #fef3c7; color: #92400e; }
+    .struct-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+    .struct-cell { font-size: 12px; padding: 8px; background: #f9fafb; border-radius: 6px; text-align: center; }
+    .struct-cell strong { display: block; font-size: 16px; color: #0f172a; }
+    .empty { color: #9ca3af; font-size: 12px; font-style: italic; }
+    .loader { text-align: center; padding: 1.5rem; color: #64748b; font-size: 13px; display: none; }
+    .examples { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; align-items: center; }
+    .chip { font-size: 12px; padding: 5px 12px; border-radius: 20px; border: 1px solid #ddd; cursor: pointer; background: #fff; color: #555; }
+    .chip:hover { border-color: #7c3aed; color: #7c3aed; }
+  </style>
+</head>
+<body>
+<nav class="nav">
+  <div class="nav-brand">NLP Legal Analyzer</div>
+  <div class="nav-links">
+    <a class="nav-link" href="home.html">🏠 Home</a>
+    <a class="nav-link" href="index.html">Analyzer</a>
+    <a class="nav-link" href="citations.html">Citations</a>
+    <a class="nav-link active" href="compare.html">Compare</a>
+    <a class="nav-link" href="risk.html">Risk</a>
+    <a class="nav-link" href="model.html">Model</a>
+    <a class="nav-link" href="audit.html">Audit</a>
+    <a class="nav-link" href="dashboard.html">Dashboard</a>
+  </div>
+</nav>
+
+<div class="page">
+  <div class="page-title">📊 Document Comparison (#6)</div>
+  <div class="page-sub">Compare two legal documents by cosine similarity, Jaccard index, entity overlap, citation diff, and structural analysis.</div>
+
+  <div class="examples">
+    <span style="font-size:12px;color:#9ca3af">Load example:</span>
+    <span class="chip" onclick="loadExample()">Rakoff vs Stein opinions</span>
+    <span class="chip" onclick="loadExample2()">Indictment vs Acquittal</span>
+  </div>
+
+  <div class="two-col">
+    <div class="doc-block">
+      <label>Document A</label>
+      <textarea id="docA" placeholder="Paste first legal document..."></textarea>
+    </div>
+    <div class="doc-block">
+      <label>Document B</label>
+      <textarea id="docB" placeholder="Paste second legal document..."></textarea>
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn primary" id="compareBtn" onclick="compareDocs()">Compare Documents</button>
+  </div>
+
+  <div class="loader" id="loader">Comparing documents...</div>
+
+  <div class="results" id="results">
+
+    <div class="card">
+      <div class="card-title">Similarity Scores</div>
+      <div class="sim-grid">
+        <div class="sim-stat"><div class="sim-n" id="cosineScore">—</div><div class="sim-l">Cosine (TF-IDF)</div></div>
+        <div class="sim-stat"><div class="sim-n" id="jaccardScore">—</div><div class="sim-l">Jaccard (Terms)</div></div>
+        <div class="sim-stat"><div class="sim-n" id="combinedScore">—</div><div class="sim-l">Combined Score</div></div>
+      </div>
+      <div style="text-align:center;margin-top:12px;">
+        <div class="bar-track"><div class="bar-fill" id="simBar" style="width:0%"></div></div>
+        <span class="sim-label" id="simLabel">—</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Entity Overlap</div>
+      <div style="font-size:13px;color:#374151;margin-bottom:10px;">Overlap score: <strong id="overlapScore">—</strong></div>
+      <div>
+        <div style="font-size:11px;font-weight:700;color:#065f46;margin-bottom:4px;">✓ Shared entities</div>
+        <div class="tag-list" id="sharedEnts"></div>
+      </div>
+      <div style="margin-top:10px;">
+        <div style="font-size:11px;font-weight:700;color:#1e40af;margin-bottom:4px;">→ Only in Document A</div>
+        <div class="tag-list" id="onlyA"></div>
+      </div>
+      <div style="margin-top:10px;">
+        <div style="font-size:11px;font-weight:700;color:#92400e;margin-bottom:4px;">→ Only in Document B</div>
+        <div class="tag-list" id="onlyB"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Citation Diff</div>
+      <div id="citationDiff"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Structural Comparison</div>
+      <div class="struct-grid" id="structGrid"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  const API = 'http://localhost:8000';
+
+  function loadExample() {
+    document.getElementById('docA').value = "Judge Rakoff sentenced Estrada for wire fraud in New York under 18 U.S.C. 1343. The United States Attorney sought forfeiture of $2 million dollars from the defendant.";
+    document.getElementById('docB').value = "Judge Stein issued an opinion on the Estrada wire fraud case in the Southern District of New York. The grand jury had indicted Estrada in February 2012 on three counts.";
+  }
+
+  function loadExample2() {
+    document.getElementById('docA').value = "A grand jury indicted the defendant on three counts of wire fraud and conspiracy. The United States Attorney presented overwhelming evidence. The jury convicted the defendant on all counts. Sentencing was scheduled for September 2024.";
+    document.getElementById('docB').value = "The defendant was acquitted of all charges by the jury. The court found the evidence insufficient to support a conviction beyond reasonable doubt. All charges were dismissed with prejudice. The defendant was released immediately.";
+  }
+
+  function labelColor(label) {
+    const map = {
+      'near-duplicate': '#7c3aed',
+      'highly similar':  '#2563eb',
+      'moderately similar': '#d97706',
+      'low similarity':  '#ea580c',
+      'distinct':        '#dc2626'
+    };
+    return map[label] || '#64748b';
+  }
+
+  async function compareDocs() {
+    const docA = document.getElementById('docA').value.trim();
+    const docB = document.getElementById('docB').value.trim();
+    if (!docA || !docB) { alert('Please paste text in both documents.'); return; }
+
+    const btn = document.getElementById('compareBtn');
+    btn.disabled = true;
+    btn.textContent = 'Comparing...';
+    document.getElementById('loader').style.display = 'block';
+    document.getElementById('results').style.display = 'none';
+
+    try {
+      const resp = await fetch(`${API}/documents/compare`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          doc_a: docA, doc_b: docB,
+          label_a: 'Document A', label_b: 'Document B',
+          include_entities: true
+        })
+      });
+      const d = await resp.json();
+
+      // Similarity
+      const sim   = d.similarity || {};
+      const color = labelColor(sim.label);
+      document.getElementById('cosineScore').textContent   = sim.cosine   ?? '—';
+      document.getElementById('jaccardScore').textContent  = sim.jaccard  ?? '—';
+      document.getElementById('combinedScore').textContent = sim.combined ?? '—';
+      document.getElementById('simBar').style.width      = ((sim.combined || 0) * 100) + '%';
+      document.getElementById('simBar').style.background = color;
+      const labelEl = document.getElementById('simLabel');
+      labelEl.textContent = sim.label || '—';
+      labelEl.style.background = color + '22';
+      labelEl.style.color = color;
+
+      // Entities
+      const ents = d.entities || {};
+      document.getElementById('overlapScore').textContent = ents.overlap_score ?? '—';
+      document.getElementById('sharedEnts').innerHTML = (ents.shared_entities || []).length
+        ? (ents.shared_entities).map(e => `<span class="tag tag-shared">${e}</span>`).join('')
+        : '<span class="empty">None</span>';
+      document.getElementById('onlyA').innerHTML = (ents.only_in_a || []).length
+        ? (ents.only_in_a).map(e => `<span class="tag tag-a">${e}</span>`).join('')
+        : '<span class="empty">None</span>';
+      document.getElementById('onlyB').innerHTML = (ents.only_in_b || []).length
+        ? (ents.only_in_b).map(e => `<span class="tag tag-b">${e}</span>`).join('')
+        : '<span class="empty">None</span>';
+
+      // Citations
+      const cits = d.citations || {};
+      document.getElementById('citationDiff').innerHTML = `
+        <div style="font-size:13px;margin-bottom:8px;">
+          <strong>Shared (${cits.shared_count || 0}):</strong>
+          ${(cits.shared || []).join(', ') || '<span class="empty">None</span>'}
+        </div>
+        <div style="font-size:12px;color:#1e40af;margin-bottom:4px;">
+          <strong>Only in A:</strong> ${(cits.only_in_a || []).join(', ') || '<span class="empty">None</span>'}
+        </div>
+        <div style="font-size:12px;color:#92400e;">
+          <strong>Only in B:</strong> ${(cits.only_in_b || []).join(', ') || '<span class="empty">None</span>'}
+        </div>`;
+
+      // Structure
+      const st = d.structure || {};
+      const sa = st.doc_a || {};
+      const sb = st.doc_b || {};
+      document.getElementById('structGrid').innerHTML = `
+        <div class="struct-cell" style="background:#f0f9ff"><span style="font-size:10px;color:#64748b">METRIC</span></div>
+        <div class="struct-cell" style="background:#eff6ff"><span style="font-size:10px;color:#1e40af">DOC A</span></div>
+        <div class="struct-cell" style="background:#fffbeb"><span style="font-size:10px;color:#92400e">DOC B</span></div>
+        <div class="struct-cell">Words</div>
+        <div class="struct-cell"><strong>${sa.word_count || 0}</strong></div>
+        <div class="struct-cell"><strong>${sb.word_count || 0}</strong></div>
+        <div class="struct-cell">Sentences</div>
+        <div class="struct-cell"><strong>${sa.sentence_count || 0}</strong></div>
+        <div class="struct-cell"><strong>${sb.sentence_count || 0}</strong></div>
+        <div class="struct-cell">Avg Words/Sent</div>
+        <div class="struct-cell"><strong>${sa.avg_words_per_sentence || 0}</strong></div>
+        <div class="struct-cell"><strong>${sb.avg_words_per_sentence || 0}</strong></div>
+        <div class="struct-cell">Avg Word Len</div>
+        <div class="struct-cell"><strong>${sa.avg_word_length || 0}</strong></div>
+        <div class="struct-cell"><strong>${sb.avg_word_length || 0}</strong></div>
+        <div class="struct-cell">Length Ratio</div>
+        <div class="struct-cell" colspan="2" style="grid-column:span 2"><strong>${st.length_ratio || 0}</strong></div>
+      `;
+
+      document.getElementById('results').style.display = 'block';
+
+    } catch(e) {
+      alert('Error: ' + e.message + '\n\nMake sure the API server is running at localhost:8000');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Compare Documents';
+      document.getElementById('loader').style.display = 'none';
+    }
+  }
+</script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-"""
+﻿"""
 risk_scorer.py
 ==============
 FastAPI APIRouter: Risk Scoring for Legal Documents (#21)
@@ -60,6 +60,15 @@ RISK_SIGNALS = [
     (r'\bmoney laundering\b',               1.8, "financial_crime"),
     (r'\bembezzlement\b',                   1.8, "financial_crime"),
     (r'\bbribery\b|\bcorrupt\w*\b',         1.8, "financial_crime"),
+
+    # Personal injury signals
+    (r'\bpothole\b|\bslip and fall\b|\bfall\b',           1.2, "personal_injury"),
+    (r'\bemergency room\b|\bER\b|\bhospital\b',            1.3, "personal_injury"),
+    (r'\binjur\w*\b|\bwound\w*\b|\bhurt\b',               1.0, "personal_injury"),
+    (r'\bnegligen\w*\b',                                   1.2, "personal_injury"),
+    (r'\bmedical\b|\btreatment\b|\bsurgery\b',             0.8, "personal_injury"),
+    (r'\bpain and suffering\b',                            1.3, "personal_injury"),
+    (r'\baccident\b|\bcollision\b|\bcrash\b',              1.0, "personal_injury"),
 
     # Civil / regulatory signals — medium weight
     (r'\binjunction\b',                     1.2, "civil"),
@@ -262,3 +271,4 @@ def list_signals():
         ],
         "scale": "0-10 (minimal → low → medium → high → critical)",
     }
+

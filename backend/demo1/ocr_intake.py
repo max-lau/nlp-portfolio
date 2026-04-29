@@ -167,7 +167,7 @@ def extract_form_fields(text: str) -> dict:
 
     # Date
     for p in [r'date\s*:\s*([A-Za-z]+ \d{1,2},?\s*\d{4})',
-               r'\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+\d{4}\b',
+               r'\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2}(?:st|nd|rd|th)?,?\s+\d{4}\b',
                r'\b(\d{1,2}[/\-]\d{1,2}[/\-]\d{2,4})\b']:
         m = re.search(p, text, re.IGNORECASE)
         if m: fields["date"] = (m.group(1) if m.lastindex else m.group(0)).strip(); break
@@ -356,64 +356,4 @@ def supported_languages():
         ]
     }
 
-@router.post("/test-upload")
-async def test_upload(file: UploadFile = File(...)):
-    try:
-        contents = await file.read()
-        print(f"[TEST] File received: {file.filename}, size: {len(contents)}, type: {file.content_type}")
-        result = ocr_with_claude(contents, file.content_type)
-        print(f"[TEST] Claude result: {result['text'][:100]}")
-        return {"success": True, "text": result["text"], "engine": result["engine"]}
-    except Exception as e:
-        import traceback
-        print(f"[TEST] ERROR: {e}")
-        traceback.print_exc()
-        return {"success": False, "error": str(e)}
-
-@router.post("/analyze2")
-async def analyze_document2(
-    file: UploadFile = File(...),
-    lang: str = Form(default="eng"),
-    context: str = Form(default="general"),
-    engine: str = Form(default="auto")
-):
-    import traceback
-    try:
-        contents = await file.read()
-        mime_type = file.content_type
-        print(f"[ANALYZE2] Got file: {file.filename}, {len(contents)} bytes, {mime_type}")
-        
-        ocr_result = extract_text(contents, lang=lang, engine=engine, mime_type=mime_type)
-        text = clean_ocr_text(ocr_result["text"])
-        print(f"[ANALYZE2] OCR done: {len(text)} chars")
-        
-        from backend.demo1.risk_scorer import score_text
-        risk = score_text(text, context=context)
-        print(f"[ANALYZE2] Risk done: {risk['score']}")
-        
-        import spacy
-        nlp = spacy.load("en_core_web_sm")
-        entities = [{"text": e.text, "type": e.label_} for e in nlp(text[:5000]).ents]
-        print(f"[ANALYZE2] Entities done: {len(entities)}")
-        
-        from backend.demo1.custom_entities import extract_custom_entities
-        custom_ents = extract_custom_entities(text)
-        print(f"[ANALYZE2] Custom entities done: {len(custom_ents)}")
-        
-        form_fields = extract_form_fields(text)
-        print(f"[ANALYZE2] Form fields done: {form_fields}")
-        
-        return {
-            "success": True,
-            "ocr": {"text": text, "word_count": ocr_result["word_count"],
-                    "confidence": ocr_result["confidence"], "engine": ocr_result["engine"]},
-            "risk": {"score": risk["score"], "level": risk["level"]},
-            "entities": entities[:20],
-            "custom_entities": custom_ents[:15],
-            "form_fields": form_fields,
-        }
-    except Exception as e:
-        print(f"[ANALYZE2] ERROR: {e}")
-        traceback.print_exc()
-        return {"success": False, "error": str(e)}
 

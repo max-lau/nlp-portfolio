@@ -430,3 +430,73 @@ def export_case_pdf(case_id: int):
         media_type="application/pdf",
         headers={"Content-Disposition": f'attachment; filename="case_{case_num}.pdf"'}
     )
+
+def build_intake_pdf(ocr, risk, entities, form_fields, label="Intake"):
+    from reportlab.platypus import Table, TableStyle
+    from reportlab.lib import colors as rcolors
+    buf    = io.BytesIO()
+    doc    = SimpleDocTemplate(buf, pagesize=LETTER,
+                               leftMargin=0.85*inch, rightMargin=0.85*inch,
+                               topMargin=0.9*inch, bottomMargin=0.9*inch)
+    styles = get_styles()
+    story  = []
+    urgent = form_fields.get("urgent", False)
+    title  = ("URGENT — " if urgent else "") + "Client Intake Report"
+    make_header(story, styles, title,
+        f"{label} · {datetime.now(timezone.utc).strftime('%B %d, %Y')}")
+    story.append(Paragraph("Client Information", styles["section"]))
+    field_data = [
+        ["Client Name",    form_fields.get("client_name") or "Not detected"],
+        ["Date",           form_fields.get("date") or "Not detected"],
+        ["Matter Type",    form_fields.get("matter_type") or "Not detected"],
+        ["Phone",          form_fields.get("phone") or "Not detected"],
+        ["Urgent",         "YES" if urgent else "No"],
+    ]
+    story.append(make_kv_table(field_data))
+    story.append(Spacer(1, 10))
+    facts = form_fields.get("key_facts", [])
+    if facts:
+        story.append(Paragraph("Key Facts", styles["section"]))
+        for f in facts:
+            story.append(Paragraph(f"- {f}", styles["body"]))
+        story.append(Spacer(1, 8))
+    story.append(Paragraph("Extracted Text (OCR)", styles["section"]))
+    story.append(Paragraph(
+        f"Words: {ocr.get('word_count',0)}  Confidence: {ocr.get('confidence',0)}%  Engine: {ocr.get('engine','unknown')}",
+        styles["small"]))
+    story.append(Spacer(1, 4))
+    preview = ocr.get("text","")[:600]
+    story.append(Paragraph(preview.replace('\n','<br/>'), styles["body"]))
+    story.append(Spacer(1, 10))
+    story.append(Paragraph("Risk Assessment", styles["section"]))
+    story.append(make_kv_table([
+        ["Risk Score", f"{risk.get('score',0)} / 10"],
+        ["Risk Level", risk.get("level","unknown").upper()],
+    ]))
+    story.append(Spacer(1, 16))
+    story.append(HRFlowable(width="100%", thickness=0.5, color=GRAY))
+    story.append(Spacer(1, 4))
+    story.append(make_footer_note(styles))
+    doc.build(story)
+    return buf.getvalue()
+
+
+class IntakeExportBody(BaseModel):
+    ocr:         dict
+    risk:        dict
+    entities:    list = []
+    form_fields: dict
+    label:       str = "Intake"
+
+@router.post("/intake")
+def export_intake_pdf(body: IntakeExportBody):
+    pdf_bytes = build_intake_pdf(
+        ocr=body.ocr, risk=body.risk,
+        entities=body.entities, form_fields=body.form_fields,
+        label=body.label
+    )
+    return StreamingResponse(
+        io.BytesIO(pdf_bytes),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="intake_{datetime.now().strftime("%Y%m%d_%H%M%S")}.pdf"'}
+    )

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -247,6 +247,10 @@
 
   </div>
 
+  <div id="pdfExportRow" style="display:none;margin-top:8px;">
+    <button class="btn primary" onclick="exportPDF()" style="width:100%">📄 Download Intake Report as PDF</button>
+  </div>
+
   <!-- History panel -->
   <div id="historyPanel" style="display:none;margin-top:1rem;">
     <div class="card">
@@ -437,7 +441,9 @@
         formCard.style.display = 'none';
       }
 
+      lastResult = d;
       document.getElementById('results').style.display = 'block';
+      if (currentMode === 'analyze') document.getElementById('pdfExportRow').style.display = 'block';
 
     } catch(e) {
       alert('Error: ' + e.message + '\n\nMake sure the API server is running.');
@@ -445,6 +451,29 @@
       btn.disabled = false;
       document.getElementById('loader').style.display = 'none';
     }
+  }
+
+  let lastResult = null;
+
+  async function exportPDF() {
+    if (!lastResult) return;
+    try {
+      const resp = await fetch(`${API}/export/intake`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ocr: lastResult.ocr, risk: lastResult.risk,
+          entities: lastResult.entities || [],
+          form_fields: lastResult.form_fields,
+          label: lastResult.filename || "Intake"
+        })
+      });
+      const blob = await resp.blob();
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "intake_report.pdf";
+      a.click();
+    } catch(e) { alert("PDF export failed: " + e.message); }
   }
 
   async function loadHistory() {
@@ -472,3 +501,6 @@
 </script>
 </body>
 </html>
+
+
+

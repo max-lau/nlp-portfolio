@@ -4,9 +4,10 @@
 
 Two production-style NLP demos built with FastAPI, Python, and Claude AI.
 
-Designed to demonstrate real-world NLP data science skills for a data scientist role
+Designed to execute in the real-world legal field by applying AI platform for reviewing contracts, extracting obligations, identifying risk, and accelerating legal workflows.
+ 
 
-focused on NLP model development, legal AI, and data pipeline architecture.
+Built for law firms, in-house counsel, and compliance teams.
 
 
 

@@ -1,3 +1,4 @@
+from backend.demo1.ocr_intake import init_intake_table, router as intake_router
 from backend.demo1.fine_tune import init_model_table, router as model_router
 from backend.demo1.slack_teams import init_notify_table, router as notify_router
 from backend.demo1.auth import init_auth_table, router as auth_router
@@ -39,6 +40,7 @@ from typing import List, Optional
 load_dotenv()
 
 app = FastAPI(title="NLP Text Analyzer API")
+app.include_router(intake_router, prefix="/intake", tags=["OCR Intake"])
 app.include_router(model_router, prefix="/model", tags=["Fine-Tuned Model"])
 app.include_router(notify_router, prefix="/notify", tags=["Slack & Teams"])
 app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
@@ -66,6 +68,7 @@ init_custom_entity_table()
 init_auth_table()
 init_notify_table()
 init_model_table()
+init_intake_table()
 client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 executor = ThreadPoolExecutor(max_workers=3)
 

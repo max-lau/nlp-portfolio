@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OCR Intake — NLP Legal Analyzer</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f1f5f9; color: #1a1a1a; }
+    .nav { background: #0f172a; padding: 0 2rem; display: flex; align-items: center; gap: 1.5rem; height: 56px; flex-wrap: wrap; }
+    .nav-brand { font-size: 15px; font-weight: 700; color: #fff; }
+    .nav-links { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
+    .nav-link { font-size: 11px; font-weight: 500; padding: 5px 10px; border-radius: 6px; color: #94a3b8; text-decoration: none; border: none; background: transparent; cursor: pointer; white-space: nowrap; }
+    .nav-link:hover { background: #1e293b; color: #fff; }
+    .nav-link.active { background: #7c3aed; color: #fff; }
+
+    .page { padding: 1.5rem 2rem; max-width: 1000px; margin: 0 auto; }
+    .page-title { font-size: 22px; font-weight: 700; color: #0f172a; margin-bottom: 4px; }
+    .page-sub { font-size: 13px; color: #64748b; margin-bottom: 1.5rem; }
+
+    /* Upload zone */
+    .upload-zone {
+      border: 2px dashed #cbd5e1; border-radius: 12px;
+      background: #fff; padding: 3rem 2rem;
+      text-align: center; cursor: pointer;
+      transition: all 0.2s; position: relative;
+    }
+    .upload-zone:hover, .upload-zone.drag-over {
+      border-color: #7c3aed; background: #faf5ff;
+    }
+    .upload-zone input[type="file"] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+    }
+    .upload-icon { font-size: 48px; margin-bottom: 12px; }
+    .upload-title { font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 4px; }
+    .upload-sub { font-size: 13px; color: #64748b; }
+    .upload-formats { font-size: 11px; color: #94a3b8; margin-top: 8px; }
+
+    /* Preview */
+    .preview-section { display: none; margin-top: 1.5rem; }
+    .preview-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media (max-width: 640px) { .preview-grid { grid-template-columns: 1fr; } }
+    .preview-img { width: 100%; max-height: 300px; object-fit: contain; border-radius: 8px; border: 1px solid #e2e8f0; background: #fff; padding: 8px; }
+
+    /* Controls */
+    .controls { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; align-items: center; }
+    select { padding: 9px 14px; border-radius: 8px; border: 1px solid #ddd; font-size: 13px; background: #fff; color: #374151; }
+    .btn { padding: 10px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s; }
+    .btn.primary { background: #7c3aed; color: #fff; }
+    .btn.primary:hover { background: #6d28d9; }
+    .btn.secondary { background: #f1f5f9; color: #374151; border: 1px solid #e2e8f0; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* Mode tabs */
+    .mode-tabs { display: flex; gap: 8px; margin-bottom: 14px; }
+    .mode-tab { padding: 7px 16px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; border: 1px solid #e2e8f0; background: #fff; color: #64748b; transition: all 0.15s; }
+    .mode-tab.active { background: #7c3aed; color: #fff; border-color: #7c3aed; }
+
+    /* Results */
+    .results { margin-top: 1.5rem; display: none; }
+    .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 1.25rem; margin-bottom: 12px; }
+    .card-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #9ca3af; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+    .ocr-text { font-size: 13px; line-height: 1.8; color: #374151; white-space: pre-wrap; font-family: 'Georgia', serif; background: #f9fafb; padding: 14px; border-radius: 8px; max-height: 300px; overflow-y: auto; }
+    .conf-bar { height: 8px; background: #f3f4f6; border-radius: 4px; overflow: hidden; margin-top: 8px; }
+    .conf-fill { height: 100%; border-radius: 4px; background: #7c3aed; transition: width 0.7s; }
+
+    /* Risk */
+    .risk-score { font-size: 48px; font-weight: 800; line-height: 1; }
+    .risk-level { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-top: 4px; }
+    .risk-bar-track { height: 10px; background: #f3f4f6; border-radius: 5px; overflow: hidden; margin: 10px 0; }
+    .risk-bar-fill { height: 100%; border-radius: 5px; transition: width 0.8s; }
+
+    /* Entities */
+    .entity-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+    .entity-tag { padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+    .tag-PERSON   { background: #ede9fe; color: #5b21b6; }
+    .tag-ORG      { background: #d1fae5; color: #065f46; }
+    .tag-GPE      { background: #dbeafe; color: #1e40af; }
+    .tag-DATE     { background: #fef3c7; color: #92400e; }
+    .tag-MONEY    { background: #dcfce7; color: #166534; }
+    .tag-LAW      { background: #fee2e2; color: #991b1b; }
+    .tag-STATUTE  { background: #fee2e2; color: #991b1b; }
+    .tag-JUDGE    { background: #f3e8ff; color: #7e22ce; }
+    .tag-LEGAL_TERM { background: #fff7ed; color: #c2410c; }
+    .tag-DOCKET   { background: #e0f2fe; color: #0369a1; }
+    .tag-default  { background: #f3f4f6; color: #374151; }
+
+    /* Form fields */
+    .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    @media (max-width: 500px) { .field-grid { grid-template-columns: 1fr; } }
+    .field-item { background: #f9fafb; border-radius: 8px; padding: 10px 14px; }
+    .field-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #94a3b8; margin-bottom: 4px; }
+    .field-value { font-size: 13px; font-weight: 600; color: #0f172a; }
+    .field-empty { color: #cbd5e1; font-style: italic; }
+    .urgent-badge { display: inline-block; background: #fee2e2; color: #991b1b; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 10px; }
+
+    /* History */
+    .history-item { padding: 10px 14px; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+    .history-filename { font-size: 13px; font-weight: 600; color: #0f172a; }
+    .history-meta { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+    .history-risk { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 10px; }
+
+    .loader { text-align: center; padding: 2rem; color: #64748b; display: none; }
+    .spinner { width: 32px; height: 32px; border: 3px solid #e2e8f0; border-top-color: #7c3aed; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .alert { padding: 12px 16px; border-radius: 8px; font-size: 13px; margin-bottom: 12px; }
+    .alert-info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
+    .alert-warn { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
+  </style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-brand">NLP Legal Analyzer</div>
+  <div class="nav-links">
+    <a class="nav-link" href="home.html">🏠 Home</a>
+    <a class="nav-link" href="index.html">Analyzer</a>
+    <a class="nav-link" href="risk.html">Risk</a>
+    <a class="nav-link" href="citations.html">Citations</a>
+    <a class="nav-link" href="compare.html">Compare</a>
+    <a class="nav-link" href="model.html">Model</a>
+    <a class="nav-link" href="audit.html">Audit</a>
+    <a class="nav-link active" href="intake.html">📷 Intake</a>
+    <a class="nav-link" href="dashboard.html">Dashboard</a>
+  </div>
+</nav>
+
+<div class="page">
+  <div class="page-title">📷 OCR Document Intake</div>
+  <div class="page-sub">Photograph or scan handwritten notes, printed documents, or intake forms — extract text and run full legal NLP analysis automatically.</div>
+
+  <div class="alert alert-info">
+    📋 <strong>How it works:</strong> Upload a photo or scan → Tesseract OCR extracts text → Risk scoring, entity extraction, and form field parsing run automatically.
+  </div>
+
+  <!-- Mode selector -->
+  <div class="mode-tabs">
+    <button class="mode-tab active" onclick="setMode('analyze')" id="tab-analyze">Full Analysis</button>
+    <button class="mode-tab" onclick="setMode('scan')" id="tab-scan">Text Only</button>
+    <button class="mode-tab" onclick="setMode('form')" id="tab-form">Intake Form</button>
+    <button class="mode-tab" onclick="setMode('history')" id="tab-history">History</button>
+  </div>
+
+  <!-- Upload zone -->
+  <div id="uploadSection">
+    <div class="upload-zone" id="dropZone">
+      <input type="file" id="fileInput" accept="image/*,.pdf" onchange="handleFile(this.files[0])">
+      <div class="upload-icon">📄</div>
+      <div class="upload-title">Drop document here or click to upload</div>
+      <div class="upload-sub">Photograph, scan, or screenshot of any legal document</div>
+      <div class="upload-formats">Supports: JPG · PNG · TIFF · BMP · PDF</div>
+    </div>
+
+    <div class="preview-section" id="previewSection">
+      <div class="preview-grid">
+        <div>
+          <img id="previewImg" class="preview-img" src="" alt="Document preview">
+        </div>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:8px;" id="fileName">—</div>
+          <div style="font-size:12px;color:#64748b;margin-bottom:4px;" id="fileSize">—</div>
+          <div style="font-size:12px;color:#64748b;margin-bottom:16px;" id="fileType">—</div>
+
+          <div style="margin-bottom:10px;">
+            <div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.08em;">Language</div>
+            <select id="langSelect">
+              <option value="eng">English</option>
+              <option value="chi_sim">Chinese (Simplified)</option>
+              <option value="chi_tra">Chinese (Traditional)</option>
+              <option value="spa">Spanish</option>
+              <option value="fra">French</option>
+              <option value="deu">German</option>
+            </select>
+          </div>
+
+          <div style="margin-bottom:16px;" id="contextRow">
+            <div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.08em;">Context</div>
+            <select id="contextSelect">
+              <option value="general">General</option>
+              <option value="criminal">Criminal</option>
+              <option value="regulatory">Regulatory</option>
+            </select>
+          </div>
+
+          <div class="controls">
+            <button class="btn primary" id="analyzeBtn" onclick="runAnalysis()">Analyze Document</button>
+            <button class="btn secondary" onclick="resetUpload()">Clear</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loader -->
+  <div class="loader" id="loader">
+    <div class="spinner"></div>
+    <div id="loaderMsg">Running OCR and NLP analysis...</div>
+  </div>
+
+  <!-- Results -->
+  <div class="results" id="results">
+
+    <!-- OCR Text -->
+    <div class="card">
+      <div class="card-title">
+        Extracted Text
+        <span style="font-size:11px;" id="ocrMeta">—</span>
+      </div>
+      <div style="margin-bottom:8px;display:flex;gap:16px;font-size:12px;color:#64748b;">
+        <span>Words: <strong id="wordCount">—</strong></span>
+        <span>OCR Confidence: <strong id="ocrConf">—</strong>%</span>
+      </div>
+      <div class="conf-bar"><div class="conf-fill" id="confBar" style="width:0%"></div></div>
+      <div class="ocr-text" id="ocrText">—</div>
+    </div>
+
+    <!-- Risk Score (analyze mode only) -->
+    <div class="card" id="riskCard" style="display:none">
+      <div class="card-title">Risk Score</div>
+      <div style="display:flex;align-items:flex-end;gap:16px;">
+        <div class="risk-score" id="riskScore">—</div>
+        <div>
+          <div class="risk-level" id="riskLevel">—</div>
+          <div style="font-size:12px;color:#9ca3af">out of 10</div>
+        </div>
+      </div>
+      <div class="risk-bar-track"><div class="risk-bar-fill" id="riskBar" style="width:0%"></div></div>
+      <div id="riskSignals" style="margin-top:10px;font-size:12px;color:#64748b;"></div>
+    </div>
+
+    <!-- Entities (analyze mode only) -->
+    <div class="card" id="entitiesCard" style="display:none">
+      <div class="card-title">Extracted Entities</div>
+      <div class="entity-grid" id="entitiesGrid"></div>
+    </div>
+
+    <!-- Form Fields -->
+    <div class="card" id="formCard" style="display:none">
+      <div class="card-title">
+        Intake Form Fields
+        <span id="urgentBadge" style="display:none" class="urgent-badge">🚨 URGENT</span>
+      </div>
+      <div class="field-grid" id="fieldGrid"></div>
+      <div id="keyFacts" style="margin-top:12px;"></div>
+    </div>
+
+  </div>
+
+  <!-- History panel -->
+  <div id="historyPanel" style="display:none;margin-top:1rem;">
+    <div class="card">
+      <div class="card-title">Past Intake Scans <button class="btn secondary" style="font-size:11px;padding:4px 10px" onclick="loadHistory()">↻ Refresh</button></div>
+      <div id="historyList"><div style="color:#9ca3af;font-size:13px;text-align:center;padding:1rem">Loading...</div></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const API = 'http://localhost:8000';
+  let currentMode = 'analyze';
+  let currentFile = null;
+
+  function setMode(mode) {
+    currentMode = mode;
+    document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById(`tab-${mode}`).classList.add('active');
+
+    document.getElementById('historyPanel').style.display = mode === 'history' ? 'block' : 'none';
+    document.getElementById('uploadSection').style.display = mode === 'history' ? 'none' : 'block';
+    document.getElementById('results').style.display = 'none';
+    document.getElementById('contextRow').style.display = mode === 'analyze' ? 'block' : 'none';
+
+    const btnLabels = { analyze: 'Analyze Document', scan: 'Extract Text', form: 'Extract Form Fields' };
+    document.getElementById('analyzeBtn').textContent = btnLabels[mode] || 'Process';
+
+    if (mode === 'history') loadHistory();
+  }
+
+  function handleFile(file) {
+    if (!file) return;
+    currentFile = file;
+
+    // Show preview
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = document.getElementById('previewImg');
+      if (file.type.startsWith('image/')) {
+        img.src = e.target.result;
+        img.style.display = 'block';
+      } else {
+        img.src = '';
+        img.style.display = 'none';
+      }
+    };
+    reader.readAsDataURL(file);
+
+    document.getElementById('fileName').textContent = file.name;
+    document.getElementById('fileSize').textContent = (file.size / 1024).toFixed(1) + ' KB';
+    document.getElementById('fileType').textContent = file.type || 'unknown';
+    document.getElementById('previewSection').style.display = 'block';
+    document.getElementById('results').style.display = 'none';
+  }
+
+  function resetUpload() {
+    currentFile = null;
+    document.getElementById('fileInput').value = '';
+    document.getElementById('previewSection').style.display = 'none';
+    document.getElementById('results').style.display = 'none';
+  }
+
+  // Drag and drop
+  const dropZone = document.getElementById('dropZone');
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file) handleFile(file);
+  });
+
+  function riskColor(level) {
+    return { critical:'#dc2626', high:'#ea580c', medium:'#d97706', low:'#16a34a', minimal:'#2563eb' }[level] || '#64748b';
+  }
+
+  function entityClass(type) {
+    const map = { PERSON:'tag-PERSON', ORG:'tag-ORG', GPE:'tag-GPE', DATE:'tag-DATE',
+      MONEY:'tag-MONEY', LAW:'tag-LAW', STATUTE:'tag-STATUTE', JUDGE:'tag-JUDGE',
+      LEGAL_TERM:'tag-LEGAL_TERM', DOCKET:'tag-DOCKET' };
+    return map[type] || 'tag-default';
+  }
+
+  async function runAnalysis() {
+    if (!currentFile) { alert('Please upload a document first.'); return; }
+
+    const btn = document.getElementById('analyzeBtn');
+    btn.disabled = true;
+    document.getElementById('loader').style.display = 'block';
+    document.getElementById('results').style.display = 'none';
+
+    const endpointMap = { analyze: '/intake/analyze', scan: '/intake/scan', form: '/intake/form' };
+    const endpoint = endpointMap[currentMode];
+
+    const formData = new FormData();
+    formData.append('file', currentFile);
+    formData.append('lang', document.getElementById('langSelect').value);
+    if (currentMode === 'analyze') {
+      formData.append('context', document.getElementById('contextSelect').value);
+    }
+
+    try {
+      document.getElementById('loaderMsg').textContent =
+        currentMode === 'analyze' ? 'Running OCR + NLP pipeline...' :
+        currentMode === 'scan' ? 'Extracting text via OCR...' : 'Parsing intake form...';
+
+      const resp = await fetch(`${API}${endpoint}`, { method: 'POST', body: formData });
+      const d = await resp.json();
+
+      if (!d.success) {
+        alert('Error: ' + (d.error || 'Unknown error'));
+        return;
+      }
+
+      // OCR text
+      const text = d.text || d.ocr?.text || d.raw_text || '';
+      const conf  = d.confidence || d.ocr?.confidence || 0;
+      const words = d.word_count || d.ocr?.word_count || 0;
+
+      document.getElementById('ocrText').textContent  = text || '(No text extracted)';
+      document.getElementById('wordCount').textContent = words;
+      document.getElementById('ocrConf').textContent   = conf;
+      document.getElementById('confBar').style.width   = conf + '%';
+      document.getElementById('confBar').style.background = conf > 70 ? '#16a34a' : conf > 40 ? '#d97706' : '#dc2626';
+
+      // Risk (analyze mode)
+      const riskCard = document.getElementById('riskCard');
+      if (currentMode === 'analyze' && d.risk) {
+        const color = riskColor(d.risk.level);
+        document.getElementById('riskScore').textContent = d.risk.score;
+        document.getElementById('riskScore').style.color = color;
+        document.getElementById('riskLevel').textContent = (d.risk.level || '').toUpperCase();
+        document.getElementById('riskLevel').style.color = color;
+        document.getElementById('riskBar').style.width = (d.risk.score / 10 * 100) + '%';
+        document.getElementById('riskBar').style.background = color;
+        const sigs = (d.risk.top_signals || []).map(s => `<span style="margin-right:12px">• <strong>${s.signal}</strong> (${s.contribution})</span>`).join('');
+        document.getElementById('riskSignals').innerHTML = sigs;
+        riskCard.style.display = 'block';
+      } else {
+        riskCard.style.display = 'none';
+      }
+
+      // Entities (analyze mode)
+      const entCard = document.getElementById('entitiesCard');
+      if (currentMode === 'analyze') {
+        const allEnts = [...(d.entities || []), ...(d.custom_entities || [])];
+        const seen = new Set();
+        const unique = allEnts.filter(e => { const k = e.text?.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; });
+        document.getElementById('entitiesGrid').innerHTML = unique.slice(0, 25).map(e =>
+          `<span class="entity-tag ${entityClass(e.type)}" title="${e.type}">${e.text}</span>`
+        ).join('') || '<span style="color:#9ca3af;font-size:13px">No entities found</span>';
+        entCard.style.display = 'block';
+      } else {
+        entCard.style.display = 'none';
+      }
+
+      // Form fields
+      const formCard = document.getElementById('formCard');
+      const fields = d.form_fields || {};
+      if (Object.keys(fields).length > 0) {
+        document.getElementById('urgentBadge').style.display = fields.urgent ? 'inline-block' : 'none';
+
+        const fieldItems = [
+          { label: 'Client Name',     value: fields.client_name },
+          { label: 'Date',            value: fields.date },
+          { label: 'Matter Type',     value: fields.matter_type },
+          { label: 'Opposing Party',  value: fields.opposing_party },
+          { label: 'Phone',           value: fields.phone },
+          { label: 'Email',           value: fields.email },
+        ];
+
+        document.getElementById('fieldGrid').innerHTML = fieldItems.map(f => `
+          <div class="field-item">
+            <div class="field-label">${f.label}</div>
+            <div class="field-value ${f.value ? '' : 'field-empty'}">${f.value || 'Not detected'}</div>
+          </div>`).join('');
+
+        const facts = fields.key_facts || [];
+        document.getElementById('keyFacts').innerHTML = facts.length
+          ? `<div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;">Key Facts</div>` +
+            facts.map(f => `<div style="font-size:12px;color:#374151;padding:6px 0;border-bottom:1px solid #f3f4f6;">• ${f}</div>`).join('')
+          : '';
+
+        formCard.style.display = 'block';
+      } else {
+        formCard.style.display = 'none';
+      }
+
+      document.getElementById('results').style.display = 'block';
+
+    } catch(e) {
+      alert('Error: ' + e.message + '\n\nMake sure the API server is running.');
+    } finally {
+      btn.disabled = false;
+      document.getElementById('loader').style.display = 'none';
+    }
+  }
+
+  async function loadHistory() {
+    try {
+      const r = await fetch(`${API}/intake/history`);
+      const d = await r.json();
+      const scans = d.scans || [];
+      document.getElementById('historyList').innerHTML = scans.length
+        ? scans.map(s => {
+            const riskColor = { critical:'#dc2626', high:'#ea580c', medium:'#d97706', low:'#16a34a', minimal:'#2563eb' }[s.risk_level] || '#64748b';
+            return `<div class="history-item">
+              <div>
+                <div class="history-filename">${s.filename || 'Unnamed document'}</div>
+                <div class="history-meta">${(s.created_at||'').slice(0,16).replace('T',' ')} · ${s.word_count||0} words · OCR ${s.confidence||0}%</div>
+                <div style="font-size:12px;color:#64748b;margin-top:4px;max-width:500px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${(s.raw_text||'').slice(0,100)}...</div>
+              </div>
+              ${s.risk_level ? `<div class="history-risk" style="background:${riskColor}22;color:${riskColor}">${(s.risk_score||0)} / ${(s.risk_level||'').toUpperCase()}</div>` : ''}
+            </div>`;
+          }).join('')
+        : '<div style="color:#9ca3af;font-size:13px;text-align:center;padding:1rem">No scans yet — upload a document to get started</div>';
+    } catch(e) {
+      document.getElementById('historyList').innerHTML = '<div style="color:#9ca3af;font-size:13px;text-align:center;padding:1rem">Could not load history</div>';
+    }
+  }
+</script>
+</body>
+</html>

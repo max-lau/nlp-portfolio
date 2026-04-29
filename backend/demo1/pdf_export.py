@@ -1,4 +1,4 @@
-"""
+﻿"""
 pdf_export.py
 =============
 FastAPI APIRouter: Export to PDF (#8)
@@ -490,13 +490,16 @@ class IntakeExportBody(BaseModel):
 
 @router.post("/intake")
 def export_intake_pdf(body: IntakeExportBody):
+    from fastapi.responses import Response
     pdf_bytes = build_intake_pdf(
         ocr=body.ocr, risk=body.risk,
         entities=body.entities, form_fields=body.form_fields,
         label=body.label
     )
-    return StreamingResponse(
-        io.BytesIO(pdf_bytes),
+    return Response(
+        content=pdf_bytes,
         media_type="application/pdf",
         headers={"Content-Disposition": f'attachment; filename="intake_{datetime.now().strftime("%Y%m%d_%H%M%S")}.pdf"'}
     )
+
+

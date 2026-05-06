@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Redaction — NLP Legal Analyzer</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f1f5f9; color: #1a1a1a; }
+    .page { padding: 1.5rem 2rem; max-width: 1000px; margin: 0 auto; }
+    .page-title { font-size: 22px; font-weight: 700; color: #0f172a; margin-bottom: 4px; }
+    .page-sub { font-size: 13px; color: #64748b; margin-bottom: 1.5rem; }
+    .badges { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 1.25rem; }
+    .badge { font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 20px; }
+    .badge-purple { background: #ede9fe; color: #6d28d9; }
+    .badge-green  { background: #d1fae5; color: #065f46; }
+    .badge-blue   { background: #dbeafe; color: #1d4ed8; }
+
+    /* Tabs */
+    .tabs { display: flex; gap: 4px; margin-bottom: 1.25rem; border-bottom: 2px solid #e5e7eb; }
+    .tab { padding: 8px 18px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; background: transparent; color: #64748b; border-bottom: 2px solid transparent; margin-bottom: -2px; }
+    .tab.active { color: #7c3aed; border-bottom-color: #7c3aed; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* Input area */
+    .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 1.25rem; margin-bottom: 12px; }
+    .card-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #9ca3af; margin-bottom: 12px; }
+    textarea { width: 100%; min-height: 140px; padding: 14px; border: 1px solid #ddd; border-radius: 10px; font-size: 14px; line-height: 1.6; resize: vertical; background: #fff; }
+    textarea:focus { outline: none; border-color: #7c3aed; box-shadow: 0 0 0 3px rgba(124,58,237,0.1); }
+
+    /* Controls */
+    .controls { display: flex; gap: 10px; margin-top: 12px; align-items: center; flex-wrap: wrap; }
+    select { padding: 9px 14px; border-radius: 8px; border: 1px solid #ddd; font-size: 13px; background: #fff; color: #374151; }
+    .btn { padding: 10px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s; }
+    .btn.primary { background: #7c3aed; color: #fff; }
+    .btn.primary:hover { background: #6d28d9; }
+    .btn.danger { background: #ef4444; color: #fff; }
+    .btn.danger:hover { background: #dc2626; }
+    .btn.outline { background: #fff; color: #374151; border: 1.5px solid #e5e7eb; }
+    .btn.outline:hover { border-color: #7c3aed; color: #7c3aed; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* Upload zone */
+    .upload-zone { border: 2px dashed #c4b5fd; border-radius: 12px; padding: 2.5rem; text-align: center; background: #faf5ff; cursor: pointer; transition: all 0.2s; }
+    .upload-zone:hover { border-color: #7c3aed; background: #ede9fe; }
+    .upload-zone.drag-over { border-color: #7c3aed; background: #ede9fe; }
+    .upload-title { font-size: 15px; font-weight: 600; color: #4c1d95; margin-bottom: 6px; }
+    .upload-sub { font-size: 12px; color: #7c3aed; }
+    #pdfFileInput { display: none; }
+
+    /* Results */
+    .results { margin-top: 1.5rem; display: none; }
+    .results.visible { display: block; }
+
+    /* Stats row */
+    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 12px; }
+    .stat-box { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 14px; text-align: center; }
+    .stat-num { font-size: 28px; font-weight: 800; color: #7c3aed; }
+    .stat-label { font-size: 11px; color: #9ca3af; margin-top: 2px; text-transform: uppercase; letter-spacing: 0.05em; }
+
+    /* Redacted text display */
+    .text-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+    .text-box { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 14px; }
+    .text-box-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+    .text-box-title.original { color: #64748b; }
+    .text-box-title.redacted { color: #7c3aed; }
+    .text-content { font-size: 13px; line-height: 1.8; color: #374151; white-space: pre-wrap; word-break: break-word; max-height: 280px; overflow-y: auto; }
+
+    /* Findings table */
+    .findings-list { display: flex; flex-direction: column; gap: 6px; }
+    .finding-item { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: #f9fafb; border-radius: 8px; border-left: 3px solid #7c3aed; }
+    .finding-badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 4px; white-space: nowrap; }
+    .finding-text { font-size: 13px; color: #1e293b; font-weight: 500; flex: 1; }
+    .finding-score { font-size: 11px; color: #9ca3af; }
+    .finding-source { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: #e0e7ff; color: #3730a3; }
+    .finding-reason { font-size: 11px; color: #64748b; margin-top: 2px; }
+
+    /* Category colors */
+    .cat-PERSON      { background: #fee2e2; color: #991b1b; }
+    .cat-SSN         { background: #fee2e2; color: #7f1d1d; }
+    .cat-PHONE       { background: #ffedd5; color: #9a3412; }
+    .cat-EMAIL       { background: #fef3c7; color: #92400e; }
+    .cat-ADDRESS     { background: #fef9c3; color: #713f12; }
+    .cat-SETTLEMENT  { background: #dcfce7; color: #14532d; }
+    .cat-MINOR       { background: #fce7f3; color: #831843; }
+    .cat-PRIVILEGE   { background: #e0e7ff; color: #1e3a8a; }
+    .cat-MEDICAL     { background: #d1fae5; color: #065f46; }
+    .cat-OTHER       { background: #f3f4f6; color: #374151; }
+
+    /* PDF files list */
+    .file-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; background: #f9fafb; border-radius: 8px; margin-bottom: 6px; border: 1px solid #e5e7eb; }
+    .file-name { font-size: 13px; font-weight: 600; color: #1e293b; }
+    .file-meta { font-size: 11px; color: #9ca3af; margin-top: 2px; }
+    .file-actions { display: flex; gap: 6px; }
+    .btn-sm { padding: 5px 12px; font-size: 12px; border-radius: 6px; cursor: pointer; border: none; font-weight: 600; }
+    .btn-sm.download { background: #ede9fe; color: #6d28d9; }
+    .btn-sm.delete   { background: #fee2e2; color: #dc2626; }
+    .btn-sm:hover { opacity: 0.85; }
+
+    /* Threshold slider */
+    .slider-row { display: flex; align-items: center; gap: 12px; }
+    .slider-row input[type=range] { flex: 1; accent-color: #7c3aed; }
+    .slider-val { font-size: 13px; font-weight: 700; color: #7c3aed; min-width: 32px; }
+
+    /* Loader */
+    .loader { text-align: center; padding: 2rem; color: #64748b; display: none; }
+    .loader.visible { display: block; }
+    .spinner { display: inline-block; width: 32px; height: 32px; border: 3px solid #e5e7eb; border-top-color: #7c3aed; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 8px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Examples */
+    .examples { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+    .chip { font-size: 12px; padding: 5px 12px; border-radius: 20px; border: 1px solid #ddd; cursor: pointer; background: #fff; color: #555; }
+    .chip:hover { border-color: #7c3aed; color: #7c3aed; }
+
+    @media (max-width: 640px) {
+      .text-compare { grid-template-columns: 1fr; }
+      .stats-row { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+  <link rel="stylesheet" href="paraiq-sidebar.css">
+</head>
+<body>
+
+<div class="page">
+  <div class="page-title">Redaction Automation</div>
+  <div class="page-sub">Auto-detect and redact PII, privileged content, and sensitive legal information using triple-layer AI detection.</div>
+
+  <div class="badges">
+    <span class="badge badge-purple">Presidio + Claude</span>
+    <span class="badge badge-green">Secure Delete</span>
+    <span class="badge badge-blue">15 Categories</span>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('text')">Text Redaction</button>
+    <button class="tab" onclick="switchTab('pdf')">PDF Redaction</button>
+    <button class="tab" onclick="switchTab('files')">Redacted Files</button>
+  </div>
+
+  <!-- TEXT REDACTION TAB -->
+  <div class="tab-panel active" id="tab-text">
+    <div class="card">
+      <div class="card-title">Input Text</div>
+      <div class="examples">
+        <span style="font-size:12px;color:#9ca3af">Examples:</span>
+        <span class="chip" onclick="setExample('legal')">Legal intake</span>
+        <span class="chip" onclick="setExample('medical')">Medical record</span>
+        <span class="chip" onclick="setExample('financial')">Financial doc</span>
+        <span class="chip" onclick="setExample('deposition')">Deposition</span>
+      </div>
+      <textarea id="inputText" placeholder="Paste legal text to redact..."></textarea>
+
+      <div class="controls">
+        <div>
+          <div style="font-size:11px;color:#9ca3af;margin-bottom:4px">STYLE</div>
+          <select id="styleSelect">
+            <option value="label">[CATEGORY] labels</option>
+            <option value="blackout">[REDACTED] blackout</option>
+            <option value="asterisk">**** asterisks</option>
+          </select>
+        </div>
+        <div style="min-width:200px">
+          <div style="font-size:11px;color:#9ca3af;margin-bottom:4px">CONFIDENCE THRESHOLD</div>
+          <div class="slider-row">
+            <input type="range" id="threshold" min="0.1" max="0.9" step="0.05" value="0.5" oninput="document.getElementById('threshVal').textContent=parseFloat(this.value).toFixed(2)">
+            <span class="slider-val" id="threshVal">0.50</span>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;margin-top:16px">
+          <input type="checkbox" id="useClaude" checked style="accent-color:#7c3aed">
+          <label for="useClaude" style="font-size:13px;color:#374151">Claude contextual detection</label>
+        </div>
+        <button class="btn primary" style="margin-top:16px" onclick="runTextRedaction()">Redact Text</button>
+        <button class="btn outline" style="margin-top:16px" onclick="clearText()">Clear</button>
+      </div>
+    </div>
+
+    <div class="loader" id="textLoader">
+      <div class="spinner"></div>
+      <div>Analyzing with Presidio + Claude...</div>
+    </div>
+
+    <div class="results" id="textResults">
+      <!-- Stats -->
+      <div class="stats-row">
+        <div class="stat-box">
+          <div class="stat-num" id="statTotal">0</div>
+          <div class="stat-label">Redactions</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-num" id="statCategories">0</div>
+          <div class="stat-label">Categories</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-num" id="statConfidence">0%</div>
+          <div class="stat-label">Avg Confidence</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-num" id="statClaude">0</div>
+          <div class="stat-label">Claude Catches</div>
+        </div>
+      </div>
+
+      <!-- Text comparison -->
+      <div class="text-compare">
+        <div class="text-box">
+          <div class="text-box-title original">Original Text</div>
+          <div class="text-content" id="originalText"></div>
+        </div>
+        <div class="text-box">
+          <div class="text-box-title redacted">Redacted Text</div>
+          <div class="text-content" id="redactedText"></div>
+        </div>
+      </div>
+
+      <!-- Copy redacted -->
+      <div style="margin-bottom:12px">
+        <button class="btn outline" onclick="copyRedacted()">Copy Redacted Text</button>
+      </div>
+
+      <!-- Findings -->
+      <div class="card">
+        <div class="card-title">Detection Report</div>
+        <div class="findings-list" id="findingsList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PDF REDACTION TAB -->
+  <div class="tab-panel" id="tab-pdf">
+    <div class="card">
+      <div class="card-title">Upload PDF Document</div>
+      <div class="upload-zone" id="uploadZone"
+           onclick="document.getElementById('pdfFileInput').click()"
+           ondragover="handleDragOver(event)"
+           ondragleave="handleDragLeave(event)"
+           ondrop="handleDrop(event)">
+        <div class="upload-title">Drop PDF here or click to browse</div>
+        <div class="upload-sub">Max 50MB &bull; PDF only &bull; Black-box redactions applied</div>
+      </div>
+      <input type="file" id="pdfFileInput" accept=".pdf" onchange="handlePdfUpload(event)">
+
+      <div class="controls" style="margin-top:14px">
+        <div>
+          <div style="font-size:11px;color:#9ca3af;margin-bottom:4px">REDACTION STYLE</div>
+          <select id="pdfStyle">
+            <option value="label">[CATEGORY] labels</option>
+            <option value="blackout">Black box</option>
+          </select>
+        </div>
+        <div style="min-width:200px">
+          <div style="font-size:11px;color:#9ca3af;margin-bottom:4px">CONFIDENCE THRESHOLD</div>
+          <div class="slider-row">
+            <input type="range" id="pdfThreshold" min="0.1" max="0.9" step="0.05" value="0.5"
+                   oninput="document.getElementById('pdfThreshVal').textContent=parseFloat(this.value).toFixed(2)">
+            <span class="slider-val" id="pdfThreshVal">0.50</span>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;margin-top:16px">
+          <input type="checkbox" id="pdfUseClaude" checked style="accent-color:#7c3aed">
+          <label for="pdfUseClaude" style="font-size:13px;color:#374151">Claude contextual detection</label>
+        </div>
+      </div>
+    </div>
+
+    <div class="loader" id="pdfLoader">
+      <div class="spinner"></div>
+      <div>Processing PDF — applying redactions...</div>
+    </div>
+
+    <div class="results" id="pdfResults">
+      <div class="stats-row">
+        <div class="stat-box">
+          <div class="stat-num" id="pdfStatTotal">0</div>
+          <div class="stat-label">Redactions</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-num" id="pdfStatPages">0</div>
+          <div class="stat-label">Pages</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-num" id="pdfStatCategories">0</div>
+          <div class="stat-label">Categories</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-num" id="pdfStatConfidence">0%</div>
+          <div class="stat-label">Confidence</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Redacted Document</div>
+        <div id="pdfDownloadArea" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <button class="btn primary" id="pdfDownloadBtn" onclick="downloadPdf()">Download Redacted PDF</button>
+          <button class="btn danger" id="pdfDeleteBtn" onclick="deletePdf()">Secure Delete</button>
+          <span style="font-size:12px;color:#9ca3af" id="pdfFileInfo"></span>
+        </div>
+        <div style="margin-top:14px">
+          <div class="card-title">Preview (original text)</div>
+          <div class="text-content" id="pdfPreviewOriginal" style="max-height:120px;background:#f9fafb;padding:10px;border-radius:6px"></div>
+        </div>
+        <div style="margin-top:10px">
+          <div class="card-title" style="color:#7c3aed">Redacted preview</div>
+          <div class="text-content" id="pdfPreviewRedacted" style="max-height:120px;background:#faf5ff;padding:10px;border-radius:6px;border:1px solid #e9d5ff"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Detection Report</div>
+        <div class="findings-list" id="pdfFindingsList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- REDACTED FILES TAB -->
+  <div class="tab-panel" id="tab-files">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div class="card-title" style="margin-bottom:0">Stored Redacted Files</div>
+        <button class="btn outline" onclick="loadFiles()" style="font-size:12px;padding:6px 14px">Refresh</button>
+      </div>
+      <div id="filesList">
+        <div style="text-align:center;color:#9ca3af;padding:2rem;font-size:13px">Loading files...</div>
+      </div>
+    </div>
+    <div class="card" style="background:#fef2f2;border-color:#fecaca">
+      <div class="card-title" style="color:#991b1b">Secure Deletion Policy</div>
+      <p style="font-size:13px;color:#7f1d1d;line-height:1.6">
+        All files are securely deleted by overwriting with zeros before removal — data cannot be recovered from disk.
+        Files are automatically purged after 30 days. Deletion events are logged in the Audit Trail.
+      </p>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ParaIQ API authentication key
+  const PARAIQ_KEY = 'pk-84d8657019538fb44aeee9a6a58b2342c5b819c4cceecb3996570d9e980afa40';
+const API = 'https://nlp.para-iq.com';
+var currentPdfRedactionId = null;
+
+// ── Tab switching ─────────────────────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(function(t, i) {
+    t.classList.toggle('active', ['text','pdf','files'][i] === name);
+  });
+  document.querySelectorAll('.tab-panel').forEach(function(p) {
+    p.classList.remove('active');
+  });
+  document.getElementById('tab-' + name).classList.add('active');
+  if (name === 'files') loadFiles();
+}
+
+// ── Examples ──────────────────────────────────────────────────────────────────
+var EXAMPLES = {
+  legal: 'My client John Smith, SSN 123-45-6789, residing at 456 Park Avenue, New York, NY 10022, phone 212-555-0198, email jsmith@gmail.com, is seeking a confidential settlement of $2,500,000 in the matter involving the minor child. Attorney-client privileged communication enclosed.',
+  medical: 'Patient Jane Doe, DOB 03/15/1978, MRN 4829301, diagnosed with Type 2 Diabetes at Mount Sinai Hospital. Dr. Robert Chen (NPI 1234567890) prescribed Metformin 500mg. Insurance: Aetna policy #AET-928471. Emergency contact: husband Michael Doe, 917-555-0142.',
+  financial: 'Wire transfer authorized by Richard Torres (SSN 456-78-9012) from account 8834729103 (routing 021000089) to offshore account CH56 0483 5012 3456 7800 9. Amount: $847,500. Flagged as suspicious by compliance officer.',
+  deposition: 'The witness, referred to herein as Witness A for protection purposes, testified that on the evening of January 14th, she observed the defendant near 789 Madison Avenue. The protected witness was accompanied by a minor child, age 7. This deposition contains attorney-client privileged material.',
+};
+
+function setExample(key) {
+  document.getElementById('inputText').value = EXAMPLES[key] || '';
+}
+
+// ── Text Redaction ─────────────────────────────────────────────────────────────
+async function runTextRedaction() {
+  var text = document.getElementById('inputText').value.trim();
+  if (!text) { alert('Please enter text to redact.'); return; }
+
+  document.getElementById('textLoader').className = 'loader visible';
+  document.getElementById('textResults').className = 'results';
+
+  var payload = {
+    text:       text,
+    threshold:  parseFloat(document.getElementById('threshold').value),
+    style:      document.getElementById('styleSelect').value,
+    use_claude: document.getElementById('useClaude').checked,
+  };
+
+  try {
+    var resp = await fetch(API + '/redact/text', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload),
+    });
+    var data = await resp.json();
+    document.getElementById('textLoader').className = 'loader';
+
+    if (!resp.ok) {
+      alert('Error: ' + (data.detail || 'Redaction failed'));
+      return;
+    }
+    renderTextResults(data);
+  } catch(err) {
+    document.getElementById('textLoader').className = 'loader';
+    alert('Error: ' + err.message);
+  }
+}
+
+function renderTextResults(data) {
+  document.getElementById('statTotal').textContent      = data.total_redactions;
+  document.getElementById('statCategories').textContent = data.categories_found.length;
+  document.getElementById('statConfidence').textContent = Math.round(data.confidence_score * 100) + '%';
+  document.getElementById('statClaude').textContent     = data.claude_findings_count;
+  document.getElementById('originalText').textContent  = data.original_text;
+  document.getElementById('redactedText').textContent  = data.redacted_text;
+  document.getElementById('textResults').className = 'results visible';
+  renderFindings(data.findings, 'findingsList');
+}
+
+function renderFindings(findings, containerId) {
+  var container = document.getElementById(containerId);
+  if (!findings || findings.length === 0) {
+    container.innerHTML = '<div style="text-align:center;color:#9ca3af;padding:1rem;font-size:13px">No sensitive content detected.</div>';
+    return;
+  }
+  container.innerHTML = findings.map(function(f) {
+    var catClass = 'cat-' + (f.category || 'OTHER');
+    return (
+      '<div class="finding-item">' +
+        '<span class="finding-badge ' + catClass + '">' + (f.category || 'OTHER') + '</span>' +
+        '<div style="flex:1">' +
+          '<div class="finding-text">' + escHtml(f.text) + '</div>' +
+          (f.reason ? '<div class="finding-reason">' + escHtml(f.reason) + '</div>' : '') +
+        '</div>' +
+        '<span class="finding-source">' + (f.source || '') + '</span>' +
+        '<span class="finding-score">' + Math.round((f.score||0)*100) + '%</span>' +
+      '</div>'
+    );
+  }).join('');
+}
+
+function copyRedacted() {
+  var text = document.getElementById('redactedText').textContent;
+  navigator.clipboard.writeText(text).then(function() {
+    alert('Redacted text copied to clipboard.');
+  });
+}
+
+function clearText() {
+  document.getElementById('inputText').value = '';
+  document.getElementById('textResults').className = 'results';
+}
+
+// ── PDF Redaction ─────────────────────────────────────────────────────────────
+function handleDragOver(e) {
+  e.preventDefault();
+  document.getElementById('uploadZone').classList.add('drag-over');
+}
+function handleDragLeave(e) {
+  document.getElementById('uploadZone').classList.remove('drag-over');
+}
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('uploadZone').classList.remove('drag-over');
+  var file = e.dataTransfer.files[0];
+  if (file && file.name.endsWith('.pdf')) uploadPdf(file);
+  else alert('Please drop a PDF file.');
+}
+function handlePdfUpload(event) {
+  var file = event.target.files[0];
+  if (file) uploadPdf(file);
+  event.target.value = '';
+}
+
+async function uploadPdf(file) {
+  document.getElementById('pdfLoader').className = 'loader visible';
+  document.getElementById('pdfResults').className = 'results';
+
+  var formData = new FormData();
+  formData.append('file', file, file.name);
+
+  var threshold  = parseFloat(document.getElementById('pdfThreshold').value);
+  var style      = document.getElementById('pdfStyle').value;
+  var useClaude  = document.getElementById('pdfUseClaude').checked;
+  var url = API + '/redact/pdf?threshold=' + threshold + '&style=' + style + '&use_claude=' + useClaude;
+
+  try {
+    var resp = await fetch(url, { method: 'POST', body: formData });
+    var data = await resp.json();
+    document.getElementById('pdfLoader').className = 'loader';
+
+    if (!resp.ok) {
+      alert('Error: ' + (data.detail || 'PDF redaction failed'));
+      return;
+    }
+    currentPdfRedactionId = data.redaction_id;
+    renderPdfResults(data);
+  } catch(err) {
+    document.getElementById('pdfLoader').className = 'loader';
+    alert('Error: ' + err.message);
+  }
+}
+
+function renderPdfResults(data) {
+  document.getElementById('pdfStatTotal').textContent      = data.total_redactions;
+  document.getElementById('pdfStatPages').textContent      = data.pages_processed;
+  document.getElementById('pdfStatCategories').textContent = (data.categories_found || []).length;
+  document.getElementById('pdfStatConfidence').textContent = Math.round((data.confidence_score||0)*100) + '%';
+  document.getElementById('pdfFileInfo').textContent       = 'ID: ' + data.redaction_id.slice(0,8) + '...';
+  document.getElementById('pdfPreviewOriginal').textContent = data.original_text || '';
+  document.getElementById('pdfPreviewRedacted').textContent = data.redacted_preview || '';
+  document.getElementById('pdfResults').className = 'results visible';
+  renderFindings(data.text_findings || [], 'pdfFindingsList');
+}
+
+function downloadPdf() {
+  if (!currentPdfRedactionId) return;
+  window.open(API + '/redact/download/' + currentPdfRedactionId, '_blank');
+}
+
+async function deletePdf() {
+  if (!currentPdfRedactionId) return;
+  if (!confirm('Permanently delete this redacted PDF? This action cannot be undone.')) return;
+  try {
+    var resp = await fetch(API + '/redact/' + currentPdfRedactionId, { method: 'DELETE' });
+    var data = await resp.json();
+    alert(data.message || 'File securely deleted.');
+    currentPdfRedactionId = null;
+    document.getElementById('pdfResults').className = 'results';
+  } catch(err) {
+    alert('Delete failed: ' + err.message);
+  }
+}
+
+// ── Files tab ─────────────────────────────────────────────────────────────────
+async function loadFiles() {
+  var container = document.getElementById('filesList');
+  container.innerHTML = '<div style="text-align:center;color:#9ca3af;padding:1rem;font-size:13px">Loading...</div>';
+  try {
+    var resp = await fetch(API + '/redact/files');
+    var data = await resp.json();
+    if (!data.files || data.files.length === 0) {
+      container.innerHTML = '<div style="text-align:center;color:#9ca3af;padding:2rem;font-size:13px">No redacted files stored.</div>';
+      return;
+    }
+    container.innerHTML = data.files.map(function(f) {
+      return (
+        '<div class="file-item">' +
+          '<div>' +
+            '<div class="file-name">' + escHtml(f.filename) + '</div>' +
+            '<div class="file-meta">' + f.size_kb + ' KB &bull; ID: ' + f.redaction_id.slice(0,8) + '...</div>' +
+          '</div>' +
+          '<div class="file-actions">' +
+            '<button class="btn-sm download" onclick="window.open(API+\'' + f.download_url + '\',\'_blank\')">Download</button>' +
+            '<button class="btn-sm delete" onclick="secureDeleteFile(\'' + f.redaction_id + '\')">Secure Delete</button>' +
+          '</div>' +
+        '</div>'
+      );
+    }).join('');
+  } catch(err) {
+    container.innerHTML = '<div style="color:#ef4444;padding:1rem;font-size:13px">Error loading files: ' + err.message + '</div>';
+  }
+}
+
+async function secureDeleteFile(id) {
+  if (!confirm('Permanently delete this file? This cannot be undone.')) return;
+  try {
+    var resp = await fetch(API + '/redact/' + id, { method: 'DELETE' });
+    var data = await resp.json();
+    alert(data.message || 'Deleted.');
+    loadFiles();
+  } catch(err) {
+    alert('Delete failed: ' + err.message);
+  }
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Load files on init
+loadFiles();
+</script>
+  <script src="paraiq-sidebar.js"></script>
+  <script src="paraiq-persist.js"></script>
+  <script src="paraiq-export.js"></script>
+
+  <script>
+  document.addEventListener("DOMContentLoaded", function() {
+    if (typeof ParaIQExport !== "undefined") {
+      ParaIQExport.injectButton("redaction", "Export Redaction PDF");
+    }
+  });
+  </script>
+</body>
+</html>

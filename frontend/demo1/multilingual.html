@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -7,13 +7,6 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f1f5f9; color: #1a1a1a; }
-    .nav { background: #0f172a; padding: 0 2rem; display: flex; align-items: center; gap: 1.5rem; height: 56px; }
-    .nav-brand { font-size: 15px; font-weight: 700; color: #fff; }
-    .nav-sub { font-size: 12px; color: #64748b; }
-    .nav-links { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
-    .nav-link { font-size: 12px; font-weight: 500; padding: 5px 12px; border-radius: 6px; color: #94a3b8; cursor: pointer; border: none; background: transparent; text-decoration: none; }
-    .nav-link:hover { background: #1e293b; color: #fff; }
-    .nav-link.active { background: #1e293b; color: #fff; }
     .page { padding: 1.5rem 2rem; max-width: 900px; margin: 0 auto; }
     .page-title { font-size: 22px; font-weight: 700; color: #0f172a; margin-bottom: 4px; }
     .page-sub { font-size: 13px; color: #64748b; margin-bottom: 1rem; }
@@ -104,14 +97,55 @@
     .support-flag { font-size: 18px; }
     .support-name { font-size: 13px; font-weight: 600; color: #0f172a; }
     .support-model { font-size: 11px; color: #94a3b8; }
+  
+    /* Audio Intake UI */
+    .audio-section { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem; margin-bottom: 1.25rem; }
+    .audio-title { font-size: 13px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; }
+    .audio-controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .btn-mic { display: flex; align-items: center; gap: 8px; padding: 10px 20px; border-radius: 8px; border: none; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; background: #6366f1; color: #fff; }
+    .btn-mic:hover { background: #4f46e5; }
+    .btn-mic.recording { background: #ef4444; animation: pulse-red 1.2s infinite; }
+    .btn-mic.processing { background: #94a3b8; cursor: not-allowed; }
+    @keyframes pulse-red { 0%,100%{ box-shadow: 0 0 0 0 rgba(239,68,68,0.4); } 50%{ box-shadow: 0 0 0 8px rgba(239,68,68,0); } }
+    .btn-upload { display: flex; align-items: center; gap: 8px; padding: 10px 20px; border-radius: 8px; border: 1.5px solid #e2e8f0; font-size: 14px; font-weight: 600; cursor: pointer; background: #fff; color: #374151; transition: all 0.2s; }
+    .btn-upload:hover { border-color: #6366f1; color: #6366f1; }
+    .audio-status { font-size: 13px; color: #64748b; display: flex; align-items: center; gap: 6px; }
+    .audio-status.active { color: #ef4444; font-weight: 600; }
+    .audio-status.done { color: #059669; font-weight: 600; }
+    .audio-timer { font-variant-numeric: tabular-nums; }
+    .transcript-box { margin-top: 1rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 14px; font-size: 13px; line-height: 1.7; color: #1e293b; min-height: 48px; display: none; }
+    .transcript-box.visible { display: block; }
+    .transcript-label { font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+    .audio-meta { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
+    .audio-meta-item { font-size: 11px; color: #64748b; background: #f1f5f9; padding: 2px 8px; border-radius: 4px; }
+    #audioFileInput { display: none; }
+
+      .btn-play { display:inline-flex; align-items:center; gap:6px; padding:6px 14px; border-radius:6px; border:1.5px solid #6366f1; font-size:12px; font-weight:600; cursor:pointer; background:#fff; color:#6366f1; margin-top:8px; transition:all 0.2s; }
+    .btn-play:hover { background:#6366f1; color:#fff; }
+    .btn-play.playing { background:#6366f1; color:#fff; }
+    audio#audioPlayback { display:none; }
+
+      .redaction-panel { margin-top: 10px; padding: 10px 14px; background: #faf5ff; border: 1px solid #e9d5ff; border-radius: 8px; display: none; }
+    .redaction-panel.visible { display: block; }
+    .redaction-toggle { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+    .redaction-findings { margin-top: 10px; }
+    .redact-finding-item { font-size: 11px; padding: 4px 8px; background: #fff; border-radius: 4px; margin-bottom: 3px; display: flex; gap: 8px; align-items: center; border-left: 3px solid #7c3aed; }
+    .redact-badge { font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 3px; background: #ede9fe; color: #6d28d9; white-space: nowrap; }
+    .redact-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+    .redact-box { background: #fff; border: 1px solid #e5e7eb; border-radius: 6px; padding: 8px; font-size: 12px; line-height: 1.6; color: #374151; }
+    .redact-box-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+    .redact-box-title.orig { color: #64748b; }
+    .redact-box-title.redacted { color: #7c3aed; }
+
   </style>
+  <link rel="stylesheet" href="paraiq-sidebar.css">
 </head>
 <body>
 <nav style="background:#0f172a;padding:0 2rem;display:flex;align-items:center;gap:1rem;height:52px;flex-wrap:wrap;margin-bottom:1rem;">
   <span style="font-size:14px;font-weight:700;color:#fff;">NLP Legal Analyzer</span>
   <div style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap;">
     <a href="home.html" style="font-size:11px;font-weight:600;padding:5px 10px;border-radius:6px;color:#94a3b8;text-decoration:none;">🏠 Home</a>
-    <a href="index.html" style="font-size:11px;font-weight:600;padding:5px 10px;border-radius:6px;color:#94a3b8;text-decoration:none;">Analyzer</a>
+    <a href="analyzer.html" style="font-size:11px;font-weight:600;padding:5px 10px;border-radius:6px;color:#94a3b8;text-decoration:none;">Analyzer</a>
     <a href="batch.html" style="font-size:11px;font-weight:600;padding:5px 10px;border-radius:6px;color:#94a3b8;text-decoration:none;">Batch</a>
     <a href="timeline.html" style="font-size:11px;font-weight:600;padding:5px 10px;border-radius:6px;color:#94a3b8;text-decoration:none;">Timeline</a>
     <a href="dashboard.html" style="font-size:11px;font-weight:600;padding:5px 10px;border-radius:6px;color:#94a3b8;text-decoration:none;">Dashboard</a>
@@ -120,28 +154,15 @@
     <a href="compare.html" style="font-size:11px;font-weight:600;padding:5px 10px;border-radius:6px;color:#94a3b8;text-decoration:none;">Compare</a>
     <a href="model.html" style="font-size:11px;font-weight:600;padding:5px 10px;border-radius:6px;color:#94a3b8;text-decoration:none;">Model</a>
     <a href="audit.html" style="font-size:11px;font-weight:600;padding:5px 10px;border-radius:6px;color:#94a3b8;text-decoration:none;">Audit</a>
-  </div>
-</nav>
-
-<nav class="nav">
-  <span class="nav-brand">NLP Portfolio</span>
-  <span class="nav-sub">Multilingual NLP</span>
-  <div class="nav-links">
-    <a class="nav-link" href="home.html">🏠 Home</a>
-    <a class="nav-link" href="index.html">Text Analyzer</a>
-    <a class="nav-link" href="batch.html">Batch</a>
-    <a class="nav-link" href="timeline.html">Timeline</a>
-    <a class="nav-link" href="dashboard.html">Dashboard</a>
-    <a class="nav-link" href="insights.html">Insights</a>
-    <a class="nav-link" href="scorer.html">Scorer</a>
-    <a class="nav-link active" href="multilingual.html">Multilingual</a>
+    <a class="nav-link" href="redaction.html">Redaction</a>
+    <a class="nav-link" href="redaction_review.html">Review</a>
   </div>
 </nav>
 
 <div class="page">
   <div class="page-title">Multilingual NLP analyzer</div>
-  <p class="page-sub">Sentiment, entities, and key phrases in 8 languages — auto-detection included</p>
-  <span class="badge b1">8 languages</span>
+  <p class="page-sub">Sentiment, entities, and key phrases in 13 languages — auto-detection included</p>
+  <span class="badge b1">13 languages</span>
   <span class="badge b2">Auto-detection</span>
   <span class="badge b3">spaCy + Claude</span>
 
@@ -158,10 +179,66 @@
       <button class="lang-btn" onclick="selectLang('ja')"  id="lang-ja">🇯🇵 Japanese</button>
       <button class="lang-btn" onclick="selectLang('ar')"  id="lang-ar">🇸🇦 Arabic</button>
       <button class="lang-btn" onclick="selectLang('pt')"  id="lang-pt">🇧🇷 Portuguese</button>
+      <button class="lang-btn" data-lang="bn">🇧🇩 Bengali</button>
+      <button class="lang-btn" data-lang="ht">🇭🇹 Haitian Creole</button>
+      <button class="lang-btn" data-lang="ru">🇷🇺 Russian</button>
+      <button class="lang-btn" data-lang="ko">🇰🇷 Korean</button>
+      <button class="lang-btn" data-lang="vi">🇻🇳 Vietnamese</button>
     </div>
   </div>
 
-  <textarea id="txt" placeholder="Paste text in any language..."></textarea>
+  
+  <!-- Audio Intake -->
+  <div class="audio-section">
+    <div class="audio-title">Audio Intake &mdash; Speak or Upload</div>
+    <div class="audio-controls">
+      <button class="btn-mic" id="btnMic" onclick="toggleMic()">
+        <span id="micLabel">Start Recording</span>
+      </button>
+      <button class="btn-upload" onclick="document.getElementById('audioFileInput').click()">Upload Audio</button>
+      <input type="file" id="audioFileInput" accept=".mp3,.mp4,.wav,.webm,.ogg,.flac,.m4a" onchange="handleAudioFile(event)">
+      <div class="redaction-toggle">
+        <input type="checkbox" id="autoRedact" style="accent-color:#7c3aed">
+        <label for="autoRedact" style="font-size:13px;color:#374151;font-weight:600">Auto-redact transcript</label>
+        <select id="redactStyle" style="font-size:12px;padding:4px 8px;border-radius:6px;border:1px solid #ddd;margin-left:4px">
+          <option value="label">[CATEGORY] labels</option>
+          <option value="blackout">[REDACTED]</option>
+          <option value="asterisk">****</option>
+        </select>
+      </div>
+      <div class="audio-status" id="audioStatus">
+        <span id="statusText">Ready &mdash; mic or file upload</span>
+        <span class="audio-timer" id="audioTimer"></span>
+      </div>
+    </div>
+    <div class="transcript-box" id="transcriptBox">
+      <div class="transcript-label">Transcript</div>
+      <div id="transcriptText"></div>
+      <div class="audio-meta" id="audioMeta"></div>
+      <button class="btn-play" id="btnPlay" onclick="togglePlayback()" style="display:none">Play Recording</button>
+      <audio id="audioPlayback"></audio>
+      <!-- Redaction results panel -->
+      <div class="redaction-panel" id="redactionPanel">
+        <div style="font-size:11px;font-weight:700;color:#7c3aed;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">Redaction Report</div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:8px">
+          <span class="audio-meta-item" id="redactTotal">0 redactions</span>
+          <span class="audio-meta-item" id="redactConfidence">0% confidence</span>
+        </div>
+        <div class="redact-compare">
+          <div class="redact-box">
+            <div class="redact-box-title orig">Original</div>
+            <div id="redactOriginal"></div>
+          </div>
+          <div class="redact-box">
+            <div class="redact-box-title redacted">Redacted</div>
+            <div id="redactResult"></div>
+          </div>
+        </div>
+        <div class="redaction-findings" id="redactionFindings"></div>
+      </div>
+    </div>
+  </div>
+<textarea id="txt" placeholder="Paste text in any language..."></textarea>
 
   <div class="examples">
     <span style="font-size:12px;color:#94a3b8">Examples:</span>
@@ -198,12 +275,34 @@
       <div class="support-item"><span class="support-flag">🇯🇵</span><div><div class="support-name">Japanese</div><div class="support-model">Claude</div></div></div>
       <div class="support-item"><span class="support-flag">🇸🇦</span><div><div class="support-name">Arabic</div><div class="support-model">Claude</div></div></div>
       <div class="support-item"><span class="support-flag">🇧🇷</span><div><div class="support-name">Portuguese</div><div class="support-model">Claude</div></div></div>
+      <div class="support-item">
+  <span class="support-flag">🇧🇩</span>
+  <div><div class="support-name">Bengali</div><div class="support-model">machine_translation</div></div>
+</div>
+<div class="support-item">
+  <span class="support-flag">🇭🇹</span>
+  <div><div class="support-name">Haitian Creole</div><div class="support-model">machine_translation</div></div>
+</div>
+<div class="support-item">
+  <span class="support-flag">🇷🇺</span>
+  <div><div class="support-name">Russian</div><div class="support-model">machine_translation</div></div>
+</div>
+<div class="support-item">
+  <span class="support-flag">🇰🇷</span>
+  <div><div class="support-name">Korean</div><div class="support-model">papago</div></div>
+</div>
+<div class="support-item">
+  <span class="support-flag">🇻🇳</span>
+  <div><div class="support-name">Vietnamese</div><div class="support-model">papago</div></div>
+</div>
     </div>
   </div>
 </div>
 
 <script>
-const API = 'http://localhost:8000';
+  // ParaIQ API authentication key
+  const PARAIQ_KEY = 'pk-84d8657019538fb44aeee9a6a58b2342c5b819c4cceecb3996570d9e980afa40';
+const API = 'https://nlp.para-iq.com';
 let selectedLang = 'auto';
 
 const EX = {
@@ -373,7 +472,188 @@ function render(d, originalText) {
       </div>
     </div>`;
 }
+  // Audio Intake
+  var mediaRecorder = null;
+  var audioChunks   = [];
+  var timerInterval = null;
+  var recordSeconds = 0;
+
+  function fmtTime(s) {
+    var m   = Math.floor(s / 60).toString().padStart(2,'0');
+    var sec = (s % 60).toString().padStart(2,'0');
+    return m + ':' + sec;
+  }
+
+  function setAudioStatus(msg, cls) {
+    var el = document.getElementById('audioStatus');
+    el.className = 'audio-status' + (cls ? ' ' + cls : '');
+    document.getElementById('statusText').textContent = msg;
+  }
+
+  async function toggleMic() {
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+      stopRecording();
+    } else {
+      await startRecording();
+    }
+  }
+
+  async function startRecording() {
+    try {
+      var stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioChunks = [];
+      mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      mediaRecorder.ondataavailable = function(e) {
+        if (e.data.size > 0) audioChunks.push(e.data);
+      };
+      mediaRecorder.onstop = async function() {
+        var blob = new Blob(audioChunks, { type: 'audio/webm' });
+        stream.getTracks().forEach(function(t){ t.stop(); });
+        await submitAudioBlob(blob, 'recording.webm');
+      };
+      mediaRecorder.start(250);
+      recordSeconds = 0;
+      document.getElementById('btnMic').className = 'btn-mic recording';
+      document.getElementById('micLabel').textContent = 'Stop Recording';
+      timerInterval = setInterval(function() {
+        recordSeconds++;
+        document.getElementById('audioTimer').textContent = ' ' + fmtTime(recordSeconds);
+        setAudioStatus('Recording...', 'active');
+      }, 1000);
+    } catch(err) {
+      setAudioStatus('Microphone access denied - check browser permissions', '');
+    }
+  }
+
+  function stopRecording() {
+    clearInterval(timerInterval);
+    document.getElementById('audioTimer').textContent = '';
+    document.getElementById('btnMic').className = 'btn-mic processing';
+    document.getElementById('micLabel').textContent = 'Processing...';
+    setAudioStatus('Transcribing...', '');
+    if (mediaRecorder) mediaRecorder.stop();
+  }
+
+  function handleAudioFile(event) {
+    var file = event.target.files[0];
+    if (!file) return;
+    setAudioStatus('Uploading: ' + file.name, '');
+    submitAudioBlob(file, file.name);
+    event.target.value = '';
+  }
+
+  async function submitAudioBlob(blob, filename) {
+    var langBtn  = document.querySelector('.lang-btn.active');
+    var langCode = (langBtn && langBtn.dataset.lang && langBtn.dataset.lang !== 'auto') ? langBtn.dataset.lang : 'auto';
+    var formData = new FormData();
+    formData.append('file', blob, filename);
+    try {
+      var autoRedact = document.getElementById('autoRedact') ? document.getElementById('autoRedact').checked : false;
+      var redactStyle = document.getElementById('redactStyle') ? document.getElementById('redactStyle').value : 'label';
+      var audioUrl = API + '/intake/audio?lang=' + langCode + '&module=intake';
+      if (autoRedact) audioUrl += '&redact=true&redact_style=' + redactStyle;
+      var resp = await fetch(audioUrl, {
+        method: 'POST',
+        body: formData
+      });
+      document.getElementById('btnMic').className = 'btn-mic';
+      document.getElementById('micLabel').textContent = 'Start Recording';
+      if (!resp.ok) {
+        var err = await resp.json();
+        setAudioStatus('Error: ' + (err.detail || 'Transcription failed'), '');
+        return;
+      }
+      var data = await resp.json();
+      document.getElementById('transcriptText').textContent = data.transcript;
+      document.getElementById('audioMeta').innerHTML =
+        '<span class="audio-meta-item">Language: ' + data.detected_language + '</span>' +
+        '<span class="audio-meta-item">Duration: ' + data.duration_seconds + 's</span>' +
+        '<span class="audio-meta-item">Words: ' + data.word_count + '</span>';
+      if (data.recording_id) setPlaybackId(data.recording_id);
+      document.getElementById('transcriptBox').className = 'transcript-box visible';
+      var ta = document.getElementById('inputText') || document.querySelector('textarea');
+      if (ta) ta.value = data.transcript;
+      // Render redaction results if available
+      if (data.redaction && data.redaction.applied) {
+        var rd = data.redaction;
+        document.getElementById('redactTotal').textContent = rd.total_redactions + ' redactions';
+        document.getElementById('redactConfidence').textContent = Math.round(rd.confidence_score * 100) + '% confidence';
+        document.getElementById('redactOriginal').textContent = rd.original_transcript || '';
+        document.getElementById('redactResult').textContent = rd.redacted_transcript || '';
+        var findingsHtml = (rd.findings || []).slice(0, 8).map(function(f) {
+          return '<div class="redact-finding-item"><span class="redact-badge">' + f.category + '</span>' +
+            '<span>' + f.text + '</span>' +
+            '<span style="color:#9ca3af;margin-left:auto">' + Math.round(f.score*100) + '%</span></div>';
+        }).join('');
+        document.getElementById('redactionFindings').innerHTML = findingsHtml;
+        document.getElementById('redactionPanel').className = 'redaction-panel visible';
+      } else {
+        document.getElementById('redactionPanel').className = 'redaction-panel';
+      }
+      if (data.nlp && !data.nlp.error) {
+        if (typeof renderResults === 'function') renderResults(data.nlp);
+        setAudioStatus('Transcription complete - NLP analysis ready', 'done');
+      } else {
+        setAudioStatus('Transcript ready - click Analyze to run NLP', 'done');
+      }
+    } catch(err) {
+      document.getElementById('btnMic').className = 'btn-mic';
+      document.getElementById('micLabel').textContent = 'Start Recording';
+      setAudioStatus('Error: ' + err.message, '');
+    }
+  }
+  // End Audio Intake
+
+
+  // Audio Playback
+  var currentRecordingId = null;
+
+  function setPlaybackId(id) {
+    currentRecordingId = id;
+    var btn = document.getElementById("btnPlay");
+    if (btn && id) btn.style.display = "inline-flex";
+  }
+
+  function togglePlayback() {
+    var audio = document.getElementById("audioPlayback");
+    var btn   = document.getElementById("btnPlay");
+    if (!currentRecordingId) return;
+    if (!audio.src || !audio.src.includes(currentRecordingId)) {
+      audio.src = API + "/intake/audio/" + currentRecordingId + "/playback";
+    }
+    if (audio.paused) {
+      audio.play();
+      btn.textContent = "Pause Recording";
+      btn.className = "btn-play playing";
+    } else {
+      audio.pause();
+      btn.textContent = "Play Recording";
+      btn.className = "btn-play";
+    }
+    audio.onended = function() {
+      btn.textContent = "Play Recording";
+      btn.className = "btn-play";
+    };
+  }
+  // End Audio Playback
+
 </script>
+  <script src="paraiq-sidebar.js"></script>
+  <script src="paraiq-persist.js"></script>
+  <script src="paraiq-export.js"></script>
+
+  <script>
+  document.addEventListener("DOMContentLoaded", function() {
+    if (typeof ParaIQExport !== "undefined") {
+      ParaIQExport.injectButton("multilingual", "Export Multilingual PDF");
+    }
+  });
+  </script>
 </body>
 </html>
+
+
+
+
+
 

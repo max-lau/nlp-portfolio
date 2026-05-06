@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -7,12 +7,6 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f1f5f9; color: #1a1a1a; }
-    .nav { background: #0f172a; padding: 0 2rem; display: flex; align-items: center; gap: 1.5rem; height: 56px; }
-    .nav-brand { font-size: 15px; font-weight: 700; color: #fff; }
-    .nav-links { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
-    .nav-link { font-size: 11px; font-weight: 500; padding: 5px 10px; border-radius: 6px; color: #94a3b8; text-decoration: none; border: none; background: transparent; cursor: pointer; white-space: nowrap; }
-    .nav-link:hover { background: #1e293b; color: #fff; }
-    .nav-link.active { background: #7c3aed; color: #fff; }
     .page { padding: 1.5rem 2rem; max-width: 860px; margin: 0 auto; }
     .page-title { font-size: 22px; font-weight: 700; color: #0f172a; margin-bottom: 4px; }
     .page-sub { font-size: 13px; color: #64748b; margin-bottom: 1.5rem; }
@@ -45,23 +39,9 @@
     .chip:hover { border-color: #7c3aed; color: #7c3aed; }
     .examples { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; align-items: center; }
   </style>
+  <link rel="stylesheet" href="paraiq-sidebar.css">
 </head>
 <body>
-<nav class="nav">
-  <div class="nav-brand">NLP Legal Analyzer</div>
-  <div class="nav-links">
-    <a class="nav-link" href="home.html">🏠 Home</a>
-    <a class="nav-link" href="index.html">Analyzer</a>
-    <a class="nav-link" href="timeline.html">Timeline</a>
-    <a class="nav-link active" href="citations.html">Citations</a>
-    <a class="nav-link" href="compare.html">Compare</a>
-    <a class="nav-link" href="risk.html">Risk</a>
-    <a class="nav-link" href="model.html">Model</a>
-    <a class="nav-link" href="audit.html">Audit</a>
-    <a class="nav-link" href="intake.html">📷 Intake</a>
-    <a class="nav-link" href="dashboard.html">Dashboard</a>
-  </div>
-</nav>
 
 <div class="page">
   <div class="page-title">⚖️ Legal Citation Resolver</div>
@@ -94,7 +74,9 @@
 </div>
 
 <script>
-  const API = 'http://localhost:8000';
+  // ParaIQ API authentication key
+  const PARAIQ_KEY = 'pk-84d8657019538fb44aeee9a6a58b2342c5b819c4cceecb3996570d9e980afa40';
+  const API = 'https://nlp.para-iq.com';
   const EXAMPLES = {
     estrada: "Defendant violated 18 U.S.C. 1343 and was cited in 880 F. Supp. 2d 478 and 2012 WL 3083477. See also 2012 U.S. Dist. LEXIS 102391.",
     usc:     "The charges included violations of 18 U.S.C. 1341, 18 U.S.C. 1343, and 18 U.S.C. 1956. The court applied Rule 12(b)(6).",
@@ -112,7 +94,7 @@
       const endpoint = resolve ? '/citations/resolve' : '/citations/extract';
       const r = await fetch(`${API}${endpoint}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-API-Key': PARAIQ_KEY },
         body: JSON.stringify({ text, resolve })
       });
       const d = await r.json();
@@ -154,7 +136,23 @@
     }
   }
 </script>
+  <script src="paraiq-sidebar.js"></script>
+  <script src="paraiq-persist.js"></script>
+  <script src="paraiq-export.js"></script>
+
+  <script>
+  document.addEventListener("DOMContentLoaded", function() {
+    if (typeof ParaIQExport !== "undefined") {
+      ParaIQExport.injectButton("citations", "Export Citations PDF");
+    }
+  });
+  </script>
 </body>
 </html>
+
+
+
+
+
 
 

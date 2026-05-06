@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ParaIQ — Witness Credibility Scorer</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0f172a;
+      --surface:   #1e293b;
+      --surface2:  #263347;
+      --border:    #334155;
+      --purple:    #7c3aed;
+      --purple-lt: #a78bfa;
+      --purple-dk: #5b21b6;
+      --cyan:      #06b6d4;
+      --green:     #10b981;
+      --amber:     #f59e0b;
+      --red:       #ef4444;
+      --text:      #f1f5f9;
+      --muted:     #94a3b8;
+    }
+
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    /* NAV */
+
+    /* PAGE */
+    .page { max-width: 1100px; margin: 0 auto; padding: 28px 20px 60px; }
+    .page-title { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+    .page-sub { font-size: 13px; color: var(--muted); margin-bottom: 16px; }
+
+    .badges { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
+    .badge { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; text-transform: uppercase; letter-spacing: .04em; }
+    .badge-purple { background: #4c1d95; color: var(--purple-lt); }
+    .badge-cyan   { background: #164e63; color: #67e8f9; }
+    .badge-green  { background: #064e3b; color: #6ee7b7; }
+    .badge-amber  { background: #78350f; color: #fcd34d; }
+    .badge-red    { background: #7f1d1d; color: #fca5a5; }
+
+    /* CARD */
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-bottom: 20px; }
+    .card-title { font-size: 13px; font-weight: 700; color: var(--purple-lt); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+
+    /* INPUTS */
+    .field-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+    @media(max-width:640px){ .field-row { grid-template-columns: 1fr; } }
+    .field { display: flex; flex-direction: column; gap: 4px; }
+    .field label { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; }
+    .field input, .field select {
+      background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+      padding: 7px 10px; border-radius: 6px; font-size: 13px; transition: border-color .2s;
+    }
+    .field input:focus, .field select:focus { outline: none; border-color: var(--purple); }
+    textarea.ta {
+      width: 100%; height: 200px; background: var(--surface2); border: 1px solid var(--border);
+      color: var(--text); font-size: 13px; font-family: 'Courier New', monospace;
+      padding: 12px; border-radius: 7px; resize: vertical; transition: border-color .2s;
+    }
+    textarea.ta:focus { outline: none; border-color: var(--purple); }
+    textarea.ta::placeholder { color: var(--muted); }
+
+    /* BUTTONS */
+    .btn-row { display: flex; gap: 10px; margin-top: 6px; }
+    .btn { padding: 10px 24px; border-radius: 7px; font-size: 13px; font-weight: 700; cursor: pointer; border: none; transition: all .2s; }
+    .btn.primary { background: var(--purple); color: #fff; }
+    .btn.primary:hover { background: var(--purple-dk); transform: translateY(-1px); }
+    .btn.primary:disabled { background: #3b2563; color: #7c5cbf; cursor: not-allowed; transform: none; }
+    .btn.secondary { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+    .btn.secondary:hover { color: var(--text); border-color: var(--purple); }
+
+    /* LOADER */
+    .loader { display: none; text-align: center; padding: 30px; color: var(--muted); font-size: 13px; }
+    .loader.visible { display: block; }
+    .spinner { width: 32px; height: 32px; margin: 0 auto 12px; border: 3px solid var(--border); border-top-color: var(--purple); border-radius: 50%; animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* RESULTS */
+    .results { display: none; }
+    .results.visible { display: block; }
+
+    /* OVERALL VERDICT */
+    .verdict-bar {
+      display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 20px 24px; margin-bottom: 20px;
+    }
+    .verdict-score { font-size: 56px; font-weight: 800; line-height: 1; }
+    .verdict-info { flex: 1; }
+    .verdict-label { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+    .verdict-sub { font-size: 13px; color: var(--muted); }
+    .verdict-track { height: 8px; background: var(--border); border-radius: 4px; margin-top: 10px; overflow: hidden; }
+    .verdict-fill { height: 100%; border-radius: 4px; transition: width 1s ease; }
+
+    /* MAIN GRID */
+    .main-grid { display: grid; grid-template-columns: 420px 1fr; gap: 20px; }
+    @media(max-width:900px){ .main-grid { grid-template-columns: 1fr; } }
+
+    /* RADAR */
+    .radar-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; }
+    #radarSvg { width: 100%; max-width: 380px; display: block; margin: 0 auto; }
+
+    /* DIMENSION CARDS */
+    .dim-list { display: flex; flex-direction: column; gap: 12px; }
+    .dim-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+    .dim-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .dim-icon { font-size: 18px; }
+    .dim-name { font-size: 13px; font-weight: 700; flex: 1; }
+    .dim-score-badge { font-size: 16px; font-weight: 800; padding: 2px 10px; border-radius: 20px; }
+    .dim-track { height: 6px; background: var(--border); border-radius: 3px; margin-bottom: 8px; overflow: hidden; }
+    .dim-fill { height: 100%; border-radius: 3px; transition: width 1s ease; }
+    .dim-explanation { font-size: 12px; color: var(--muted); line-height: 1.6; }
+    .dim-quote { font-size: 11px; font-style: italic; color: var(--muted); background: rgba(0,0,0,.3); border-radius: 4px; padding: 4px 8px; margin-top: 6px; }
+
+    /* KEY FINDINGS */
+    .findings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media(max-width:640px){ .findings-grid { grid-template-columns: 1fr; } }
+    .finding-item { background: var(--surface2); border-radius: 8px; padding: 12px; font-size: 12px; line-height: 1.6; }
+    .finding-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 4px; }
+
+    /* CHIPS */
+    .chip-list { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+    .chip { font-size: 11px; padding: 4px 12px; border-radius: 20px; border: 1px solid var(--border); cursor: pointer; background: var(--surface2); color: var(--muted); transition: border-color .15s, color .15s; }
+    .chip:hover { border-color: var(--purple); color: var(--purple-lt); }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  </style>
+  <link rel="stylesheet" href="paraiq-sidebar.css">
+</head>
+<body>
+
+<div class="page">
+
+  <div class="page-title">⚖️ Witness Credibility Scorer</div>
+  <div class="page-sub">AI-powered scoring across 5 credibility dimensions with radar visualization and key finding analysis.</div>
+
+  <div class="badges">
+    <span class="badge badge-purple">Consistency</span>
+    <span class="badge badge-cyan">Responsiveness</span>
+    <span class="badge badge-green">Clarity</span>
+    <span class="badge badge-amber">Corroboration</span>
+    <span class="badge badge-red">Demeanor</span>
+  </div>
+
+  <!-- INPUT -->
+  <div class="card">
+    <div class="card-title"><span>📋</span> Witness Testimony</div>
+
+    <div class="chip-list">
+      <span style="font-size:11px;color:#64748b;align-self:center">Load example:</span>
+      <span class="chip" onclick="loadExample('high')">High credibility witness</span>
+      <span class="chip" onclick="loadExample('low')">Low credibility witness</span>
+      <span class="chip" onclick="loadFromInterrogation()">📥 Load from Interrogation</span>
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label>Witness Name / Label</label>
+        <input type="text" id="witnessName" placeholder="e.g. Ms. Rivera" />
+      </div>
+      <div class="field">
+        <label>Role</label>
+        <select id="witnessRole">
+          <option value="Witness">Witness</option>
+          <option value="Defendant">Defendant</option>
+          <option value="Expert Witness">Expert Witness</option>
+          <option value="Deponent">Deponent</option>
+          <option value="Complainant">Complainant</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Case / Matter</label>
+        <input type="text" id="caseName" placeholder="e.g. People v. Rivera" />
+      </div>
+    </div>
+
+    <textarea class="ta" id="transcriptInput"
+      placeholder="Paste the witness testimony or interrogation transcript here.
+Speaker labels are supported (Q: / A: / WITNESS: etc.)
+
+The scorer will analyze:
+  • Consistency — Does the testimony contradict itself?
+  • Responsiveness — Are questions answered directly?
+  • Clarity — Is language clear or heavily hedged?
+  • Corroboration — Does testimony align with stated evidence?
+  • Demeanor — Are there indicators of deflection or hesitation?"></textarea>
+  </div>
+
+  <!-- ANALYZE -->
+  <div class="btn-row">
+    <button class="btn primary" id="scoreBtn" onclick="scoreWitness()">⚖️ Score Credibility</button>
+    <button class="btn secondary" onclick="clearAll()">Clear</button>
+  </div>
+
+  <!-- LOADER -->
+  <div class="loader" id="loader">
+    <div class="spinner"></div>
+    Analyzing witness testimony…
+  </div>
+
+  <!-- RESULTS -->
+  <div class="results" id="results">
+
+    <!-- OVERALL VERDICT -->
+    <div class="verdict-bar" id="verdictBar" style="margin-top:22px">
+      <div class="verdict-score" id="overallScore">—</div>
+      <div class="verdict-info">
+        <div class="verdict-label" id="verdictLabel">—</div>
+        <div class="verdict-sub" id="verdictSub">—</div>
+        <div class="verdict-track">
+          <div class="verdict-fill" id="verdictFill" style="width:0%"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RADAR + DIMENSIONS -->
+    <div class="main-grid">
+
+      <!-- Radar chart -->
+      <div class="radar-card">
+        <div class="card-title" style="margin-bottom:16px"><span>📡</span> Credibility Radar</div>
+        <svg id="radarSvg" viewBox="0 0 380 380" xmlns="http://www.w3.org/2000/svg"></svg>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:14px;font-size:11px;color:var(--muted)">
+          <span>🟣 Consistency</span>
+          <span>🔵 Responsiveness</span>
+          <span>🟢 Clarity</span>
+          <span>🟡 Corroboration</span>
+          <span>🔴 Demeanor</span>
+        </div>
+      </div>
+
+      <!-- Dimension scorecards -->
+      <div class="dim-list" id="dimList"></div>
+
+    </div>
+
+    <!-- KEY FINDINGS -->
+    <div class="card" style="margin-top:20px">
+      <div class="card-title"><span>🔍</span> Key Findings</div>
+      <div class="findings-grid" id="findingsGrid"></div>
+    </div>
+
+  </div>
+
+</div><!-- /page -->
+
+<script>
+  // ParaIQ API authentication key
+  const PARAIQ_KEY = 'pk-84d8657019538fb44aeee9a6a58b2342c5b819c4cceecb3996570d9e980afa40';
+/* ── EXAMPLES ── */
+function loadExample(type) {
+  if (type === 'high') {
+    document.getElementById('witnessName').value = 'Dr. Sarah Chen';
+    document.getElementById('witnessRole').value = 'Expert Witness';
+    document.getElementById('caseName').value = 'State v. Harmon';
+    document.getElementById('transcriptInput').value = `Q: Dr. Chen, can you describe your findings from the toxicology report?
+A: Yes. The blood sample showed a BAC of 0.18, which is more than twice the legal limit of 0.08. This result was confirmed by two independent lab tests.
+Q: How confident are you in this result?
+A: Extremely confident. The samples were handled according to strict chain-of-custody protocols, and I personally reviewed the methodology. There is no ambiguity in the findings.
+Q: Could the sample have been contaminated?
+A: No. The sample was sealed immediately at the scene and transported directly to our certified facility. I examined the seals myself — they were intact.
+Q: Is it possible the testing equipment was faulty?
+A: Our equipment undergoes mandatory calibration every 30 days. The last calibration was six days before this test, and all readings were within the accepted margin of error.
+Q: Have you testified as an expert witness before?
+A: Yes, I have provided expert testimony in 47 cases over the past 12 years, always in my capacity as a forensic toxicologist.
+Q: Has any of your testimony ever been successfully challenged?
+A: Not on methodological grounds, no. One case involved a chain-of-custody dispute that was unrelated to my lab procedures.`;
+  } else {
+    document.getElementById('witnessName').value = 'Ms. Rivera';
+    document.getElementById('witnessRole').value = 'Witness';
+    document.getElementById('caseName').value = 'People v. Rivera';
+    document.getElementById('transcriptInput').value = `Q: Ms. Rivera, where were you on the evening of October 14th?
+A: I was at home all evening.
+Q: Can anyone confirm that?
+A: My roommate, Sarah.
+Q: We spoke with Sarah. She said she wasn't home until after midnight.
+A: Well, maybe I stepped out briefly. I don't remember exactly.
+Q: Did you take your car?
+A: Yes, I think so.
+Q: We have toll records showing your car crossed the Triborough Bridge at 9:43 PM. That's not nearby, is it?
+A: I... there may have been another errand. I was stressed that week.
+Q: What store did you go to?
+A: I don't recall. Somewhere nearby.
+Q: Which is it — nearby, or did you cross the bridge?
+A: I don't know. It was a long time ago.
+JUDGE: The witness will answer the question directly.
+A: I may have been confused about the date.`;
+  }
+}
+
+function loadFromInterrogation() {
+  const stored = localStorage.getItem('credibility_transcript');
+  if (stored) {
+    const data = JSON.parse(stored);
+    document.getElementById('transcriptInput').value = data.transcript || '';
+    if (data.witness) document.getElementById('witnessName').value = data.witness;
+    if (data.caseName) document.getElementById('caseName').value = data.caseName;
+  } else {
+    alert('No transcript found from Interrogation module. Run an analysis there first and click "Score Credibility".');
+  }
+}
+
+/* ── SCORING ── */
+async function scoreWitness() {
+  const transcript = document.getElementById('transcriptInput').value.trim();
+  if (!transcript) { alert('Please paste a testimony transcript first.'); return; }
+
+  document.getElementById('scoreBtn').disabled = true;
+  document.getElementById('loader').classList.add('visible');
+  document.getElementById('results').classList.remove('visible');
+
+  try {
+    const resp = await fetch('https://nlp.para-iq.com/credibility/score', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-API-Key': PARAIQ_KEY },
+      body: JSON.stringify({
+        transcript,
+        witness_name: document.getElementById('witnessName').value || 'Witness',
+        role: document.getElementById('witnessRole').value,
+        case_name: document.getElementById('caseName').value || ''
+      })
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    renderResults(data);
+    document.getElementById('results').classList.add('visible');
+  } catch(e) {
+    alert('Scoring error: ' + e.message);
+  } finally {
+    document.getElementById('scoreBtn').disabled = false;
+    document.getElementById('loader').classList.remove('visible');
+  }
+}
+
+/* ── RENDER ── */
+const DIMS = [
+  { key: 'consistency',    label: 'Consistency',    icon: '🔄', color: '#a78bfa' },
+  { key: 'responsiveness', label: 'Responsiveness', icon: '💬', color: '#06b6d4' },
+  { key: 'clarity',        label: 'Clarity',        icon: '🔍', color: '#10b981' },
+  { key: 'corroboration',  label: 'Corroboration',  icon: '📎', color: '#f59e0b' },
+  { key: 'demeanor',       label: 'Demeanor',       icon: '🎭', color: '#ef4444' },
+];
+
+function verdictStyle(score) {
+  if (score >= 8) return { label: 'High Credibility', color: '#10b981', bg: '#064e3b' };
+  if (score >= 6) return { label: 'Moderate Credibility', color: '#f59e0b', bg: '#78350f' };
+  if (score >= 4) return { label: 'Low Credibility', color: '#ef4444', bg: '#7f1d1d' };
+  return { label: 'Very Low Credibility', color: '#dc2626', bg: '#450a0a' };
+}
+
+function renderResults(data) {
+  const scores = data.scores || {};
+  const overall = data.overall_score || 0;
+  const vs = verdictStyle(overall);
+
+  // Overall
+  const scoreEl = document.getElementById('overallScore');
+  scoreEl.textContent = overall.toFixed(1);
+  scoreEl.style.color = vs.color;
+  document.getElementById('verdictLabel').textContent = vs.label;
+  document.getElementById('verdictLabel').style.color = vs.color;
+  document.getElementById('verdictSub').textContent = data.summary || '';
+  document.getElementById('verdictFill').style.width = (overall * 10) + '%';
+  document.getElementById('verdictFill').style.background = vs.color;
+  document.getElementById('verdictBar').style.borderColor = vs.color + '44';
+
+  // Radar
+  drawRadar(scores);
+
+  // Dimension cards
+  const dimList = document.getElementById('dimList');
+  dimList.innerHTML = DIMS.map(d => {
+    const s = scores[d.key] || {};
+    const score = s.score || 0;
+    const pct = (score / 10 * 100).toFixed(0);
+    return `
+      <div class="dim-card" style="border-left:3px solid ${d.color}">
+        <div class="dim-header">
+          <span class="dim-icon">${d.icon}</span>
+          <span class="dim-name">${d.label}</span>
+          <span class="dim-score-badge" style="background:${d.color}22;color:${d.color}">${score}/10</span>
+        </div>
+        <div class="dim-track">
+          <div class="dim-fill" style="width:${pct}%;background:${d.color}"></div>
+        </div>
+        <div class="dim-explanation">${escHtml(s.explanation || '')}</div>
+        ${s.key_quote ? `<div class="dim-quote">"${escHtml(s.key_quote)}"</div>` : ''}
+      </div>`;
+  }).join('');
+
+  // Key findings
+  const findings = data.key_findings || [];
+  document.getElementById('findingsGrid').innerHTML = findings.map(f => `
+    <div class="finding-item">
+      <div class="finding-label" style="color:${f.type==='strength'?'#10b981':'#ef4444'}">${f.type === 'strength' ? '✅ Strength' : '⚠️ Concern'}</div>
+      ${escHtml(f.finding)}
+    </div>`).join('') || '<p style="color:var(--muted);font-size:12px">No key findings returned.</p>';
+}
+
+/* ── RADAR CHART ── */
+function drawRadar(scores) {
+  const svg = document.getElementById('radarSvg');
+  const cx = 190, cy = 190, r = 140;
+  const n = 5;
+  const angles = DIMS.map((_, i) => (Math.PI * 2 * i / n) - Math.PI / 2);
+
+  function pt(angle, radius) {
+    return [cx + radius * Math.cos(angle), cy + radius * Math.sin(angle)];
+  }
+
+  function polygon(pts) {
+    return pts.map(p => p.join(',')).join(' ');
+  }
+
+  let html = '';
+
+  // Background rings
+  [0.2, 0.4, 0.6, 0.8, 1.0].forEach(frac => {
+    const pts = angles.map(a => pt(a, r * frac));
+    html += `<polygon points="${polygon(pts)}" fill="none" stroke="#334155" stroke-width="1"/>`;
+  });
+
+  // Axes
+  angles.forEach(a => {
+    const [x, y] = pt(a, r);
+    html += `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="#334155" stroke-width="1"/>`;
+  });
+
+  // Score polygon
+  const scorePts = DIMS.map((d, i) => {
+    const s = (scores[d.key] || {}).score || 0;
+    return pt(angles[i], r * s / 10);
+  });
+  html += `<polygon points="${polygon(scorePts)}" fill="rgba(124,58,237,0.25)" stroke="#7c3aed" stroke-width="2"/>`;
+
+  // Score dots
+  DIMS.forEach((d, i) => {
+    const s = (scores[d.key] || {}).score || 0;
+    const [x, y] = pt(angles[i], r * s / 10);
+    html += `<circle cx="${x}" cy="${y}" r="5" fill="${d.color}" stroke="#0f172a" stroke-width="2"/>`;
+  });
+
+  // Labels
+  DIMS.forEach((d, i) => {
+    const [x, y] = pt(angles[i], r + 22);
+    const s = (scores[d.key] || {}).score || 0;
+    const anchor = x < cx - 5 ? 'end' : x > cx + 5 ? 'start' : 'middle';
+    html += `<text x="${x}" y="${y}" text-anchor="${anchor}" font-size="11" fill="#94a3b8" font-family="Segoe UI,sans-serif">${d.label}</text>`;
+    html += `<text x="${x}" y="${y + 13}" text-anchor="${anchor}" font-size="10" fill="${d.color}" font-family="Segoe UI,sans-serif" font-weight="700">${s}/10</text>`;
+  });
+
+  // Center score
+  const overall = DIMS.reduce((sum, d) => sum + ((scores[d.key] || {}).score || 0), 0) / n;
+  html += `<text x="${cx}" y="${cy - 8}" text-anchor="middle" font-size="22" font-weight="800" fill="#f1f5f9" font-family="Segoe UI,sans-serif">${overall.toFixed(1)}</text>`;
+  html += `<text x="${cx}" y="${cy + 10}" text-anchor="middle" font-size="10" fill="#94a3b8" font-family="Segoe UI,sans-serif">OVERALL</text>`;
+
+  svg.innerHTML = html;
+}
+
+/* ── CLEAR ── */
+function clearAll() {
+  document.getElementById('transcriptInput').value = '';
+  document.getElementById('witnessName').value = '';
+  document.getElementById('caseName').value = '';
+  document.getElementById('results').classList.remove('visible');
+}
+
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Auto-load from Interrogation if redirected
+window.addEventListener('load', () => {
+  const stored = localStorage.getItem('credibility_transcript');
+  if (stored) {
+    try {
+      const data = JSON.parse(stored);
+      if (data.transcript) {
+        document.getElementById('transcriptInput').value = data.transcript;
+        if (data.witness) document.getElementById('witnessName').value = data.witness;
+        if (data.caseName) document.getElementById('caseName').value = data.caseName;
+        localStorage.removeItem('credibility_transcript');
+      }
+    } catch(e) {}
+  }
+});
+</script>
+  <script src="paraiq-sidebar.js"></script>
+  <script src="paraiq-persist.js"></script>
+  <script src="paraiq-export.js"></script>
+
+  <script>
+  document.addEventListener("DOMContentLoaded", function() {
+    if (typeof ParaIQExport !== "undefined") {
+      ParaIQExport.injectButton("credibility", "Export Credibility PDF");
+    }
+  });
+  </script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -9,14 +9,6 @@
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
 
     /* Nav */
-    .nav { background: #0f172a; border-bottom: 1px solid #1e293b; padding: 0 2rem; display: flex; align-items: center; gap: 1.5rem; height: 56px; position: sticky; top: 0; z-index: 100; }
-    .nav-brand { font-size: 16px; font-weight: 800; color: #fff; letter-spacing: -0.02em; }
-    .nav-brand span { color: #7c3aed; }
-    .nav-sub { font-size: 11px; color: #475569; }
-    .nav-links { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
-    .nav-link { font-size: 11px; font-weight: 500; padding: 5px 10px; border-radius: 6px; color: #94a3b8; text-decoration: none; border: none; background: transparent; cursor: pointer; white-space: nowrap; }
-    .nav-link:hover { background: #1e293b; color: #fff; }
-    .nav-link.active { background: #7c3aed; color: #fff; }
 
     /* Hero */
     .hero { padding: 4rem 2rem 2rem; text-align: center; max-width: 800px; margin: 0 auto; }
@@ -64,30 +56,9 @@
     .footer { border-top: 1px solid #1e293b; padding: 2rem; text-align: center; font-size: 12px; color: #475569; }
     .footer a { color: #7c3aed; text-decoration: none; }
   </style>
+  <link rel="stylesheet" href="paraiq-sidebar.css">
 </head>
 <body>
-
-<nav class="nav">
-  <div>
-    <div class="nav-brand">NLP <span>Legal</span> Analyzer</div>
-    <div class="nav-sub">Portfolio · Demo 1</div>
-  </div>
-  <div class="nav-links">
-    <a class="nav-link active" href="home.html">Home</a>
-    <a class="nav-link" href="index.html">Analyzer</a>
-    <a class="nav-link" href="batch.html">Batch</a>
-    <a class="nav-link" href="timeline.html">Timeline</a>
-    <a class="nav-link" href="dashboard.html">Dashboard</a>
-    <a class="nav-link" href="insights.html">Insights</a>
-    <a class="nav-link" href="scorer.html">Scorer</a>
-    <a class="nav-link" href="risk.html">Risk</a>
-    <a class="nav-link" href="citations.html">Citations</a>
-    <a class="nav-link" href="compare.html">Compare</a>
-    <a class="nav-link" href="model.html">Model</a>
-    <a class="nav-link" href="audit.html">Audit</a>
-    <a class="nav-link" href="intake.html">📷 Intake</a>
-  </div>
-</nav>
 
 <div class="hero">
   <div class="hero-badge">
@@ -101,7 +72,7 @@
     <div class="status-dot" id="statusDot"></div>
     <span id="statusText">API: checking...</span>
     <span style="color:#334155">·</span>
-    <span>localhost:8000</span>
+    <span>nlp.para-iq.com</span>
   </div>
 
   <div class="hero-stats">
@@ -129,7 +100,7 @@
   <!-- High Impact -->
   <div class="section-title">🔴 High Impact — Core NLP</div>
   <div class="grid">
-    <a class="card" href="index.html">
+    <a class="card" href="analyzer.html">
       <div class="card-badge">Live</div>
       <div class="card-icon">🔍</div>
       <div class="card-title">Text Analyzer</div>
@@ -215,7 +186,7 @@
       <div class="card-badge">Live</div>
       <div class="card-icon">🌐</div>
       <div class="card-title">Multilingual (#18)</div>
-      <div class="card-desc">Analyze text in 9 languages — EN, ZH, ES, FR, DE, JA, AR, PT, auto-detect.</div>
+      <div class="card-desc">Analyze text in 13 languages — EN, ZH, ES, FR, DE, JA, AR, PT, BN, HT, RU, KO, VI, auto-detect.</div>
       <div class="card-tag tag-med">Medium</div>
     </a>
   </div>
@@ -311,11 +282,13 @@
 
 <div class="footer">
   Built with FastAPI · spaCy · DistilBERT · CourtListener · ReportLab · bcrypt · JWT
-  &nbsp;·&nbsp; <a href="http://localhost:8000/docs" target="_blank">API Docs →</a>
+  &nbsp;·&nbsp; <a href="https://nlp.para-iq.com/docs" target="_blank">API Docs →</a>
 </div>
 
 <script>
-  const API = 'http://localhost:8000';
+  // ParaIQ API authentication key
+  const PARAIQ_KEY = 'pk-84d8657019538fb44aeee9a6a58b2342c5b819c4cceecb3996570d9e980afa40';
+  const API = 'https://nlp.para-iq.com';
 
   async function checkApi() {
     const dot    = document.getElementById('statusDot');
@@ -354,8 +327,16 @@
   checkApi();
   loadStats();
 </script>
+  <script src="paraiq-sidebar.js"></script>
+  <script src="paraiq-persist.js"></script>
 </body>
 </html>
+
+
+
+
+
+
 
 
 

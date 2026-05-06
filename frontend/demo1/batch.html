@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -92,13 +92,14 @@
     .score-bar { height: 4px; background: #e5e7eb; border-radius: 2px; margin-top: 4px; overflow: hidden; }
     .score-fill { height: 100%; border-radius: 2px; background: #3b82f6; }
   </style>
+  <link rel="stylesheet" href="paraiq-sidebar.css">
 </head>
 <body>
 <nav style="background:#0f172a;padding:0 2rem;display:flex;align-items:center;gap:1rem;height:52px;flex-wrap:wrap;margin-bottom:1rem;">
   <span style="font-size:14px;font-weight:700;color:#fff;">NLP Legal Analyzer</span>
   <div style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap;">
     <a href="home.html" style="font-size:11px;font-weight:600;padding:5px 10px;border-radius:6px;color:#94a3b8;text-decoration:none;">🏠 Home</a>
-    <a href="index.html" style="font-size:11px;font-weight:600;padding:5px 10px;border-radius:6px;color:#94a3b8;text-decoration:none;">Analyzer</a>
+    <a href="analyzer.html" style="font-size:11px;font-weight:600;padding:5px 10px;border-radius:6px;color:#94a3b8;text-decoration:none;">Analyzer</a>
     <a href="batch.html" style="font-size:11px;font-weight:600;padding:5px 10px;border-radius:6px;color:#94a3b8;text-decoration:none;">Batch</a>
     <a href="timeline.html" style="font-size:11px;font-weight:600;padding:5px 10px;border-radius:6px;color:#94a3b8;text-decoration:none;">Timeline</a>
     <a href="dashboard.html" style="font-size:11px;font-weight:600;padding:5px 10px;border-radius:6px;color:#94a3b8;text-decoration:none;">Dashboard</a>
@@ -107,6 +108,11 @@
     <a href="compare.html" style="font-size:11px;font-weight:600;padding:5px 10px;border-radius:6px;color:#94a3b8;text-decoration:none;">Compare</a>
     <a href="model.html" style="font-size:11px;font-weight:600;padding:5px 10px;border-radius:6px;color:#94a3b8;text-decoration:none;">Model</a>
     <a href="audit.html" style="font-size:11px;font-weight:600;padding:5px 10px;border-radius:6px;color:#94a3b8;text-decoration:none;">Audit</a>
+    <a class="nav-link" href="redaction.html">Redaction</a>
+    <a class="nav-link" href="redaction_review.html">Review</a>
+    <a class="nav-link" href="interrogation.html">Interrogation</a>
+    <a class="nav-link" href="credibility.html">Credibility</a>
+    <a class="nav-link" href="deposition.html">Deposition</a>
   </div>
 </nav>
 <div class="container">
@@ -153,7 +159,9 @@
 </div>
 
 <script>
-const API = 'http://localhost:8000';
+  // ParaIQ API authentication key
+  const PARAIQ_KEY = 'pk-84d8657019538fb44aeee9a6a58b2342c5b819c4cceecb3996570d9e980afa40';
+const API = 'https://nlp.para-iq.com';
 let docs = [];
 let lastResults = null;
 
@@ -270,7 +278,7 @@ async function runBatch() {
   try {
     const resp = await fetch(`${API}/analyze/batch`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-API-Key': PARAIQ_KEY },
       body: JSON.stringify({
         documents: validDocs.map(d => d.text),
         labels: validDocs.map(d => d.label)
@@ -306,7 +314,7 @@ async function runBatchCsv() {
   try {
     const resp = await fetch(`${API}/analyze/batch/csv`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-API-Key': PARAIQ_KEY },
       body: JSON.stringify({
         documents: validDocs.map(d => d.text),
         labels: validDocs.map(d => d.label)
@@ -415,6 +423,22 @@ function render(data, validDocs) {
 // Start with 3 empty docs
 addDoc(); addDoc(); addDoc();
 </script>
+  <script src="paraiq-sidebar.js"></script>
+  <script src="paraiq-persist.js"></script>
+  <script src="paraiq-export.js"></script>
+
+  <script>
+  document.addEventListener("DOMContentLoaded", function() {
+    if (typeof ParaIQExport !== "undefined") {
+      ParaIQExport.injectButton("batch", "Export Batch PDF");
+    }
+  });
+  </script>
 </body>
 </html>
+
+
+
+
+
 

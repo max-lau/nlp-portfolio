@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -10,13 +10,6 @@
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f1f5f9; color: #1a1a1a; }
 
     /* Nav */
-    .nav { background: #0f172a; padding: 0 2rem; display: flex; align-items: center; gap: 1.5rem; height: 56px; flex-wrap: wrap; }
-    .nav-brand { font-size: 15px; font-weight: 700; color: #fff; }
-    .nav-sub { font-size: 12px; color: #64748b; }
-    .nav-links { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
-    .nav-link { font-size: 11px; font-weight: 500; padding: 5px 10px; border-radius: 6px; color: #94a3b8; text-decoration: none; cursor: pointer; border: none; background: transparent; white-space: nowrap; }
-    .nav-link:hover { background: #1e293b; color: #fff; }
-    .nav-link.active { background: #7c3aed; color: #fff; }
 
     /* Layout */
     .page { padding: 1.5rem 2rem; max-width: 1100px; margin: 0 auto; }
@@ -99,30 +92,9 @@
     .refresh-btn { font-size: 12px; padding: 4px 10px; border-radius: 6px; border: 1px solid #e2e8f0; background: #f8fafc; color: #64748b; cursor: pointer; }
     .refresh-btn:hover { background: #f1f5f9; }
   </style>
+  <link rel="stylesheet" href="paraiq-sidebar.css">
 </head>
 <body>
-
-<nav class="nav">
-  <span class="nav-brand">NLP Legal Analyzer</span>
-  <span class="nav-sub">Analytics Dashboard</span>
-  <div class="nav-links">
-    <a class="nav-link" href="home.html">🏠 Home</a>
-    <a class="nav-link" href="index.html">Analyzer</a>
-    <a class="nav-link" href="batch.html">Batch</a>
-    <a class="nav-link" href="timeline.html">Timeline</a>
-    <a class="nav-link" href="risk.html">Risk</a>
-    <a class="nav-link" href="citations.html">Citations</a>
-    <a class="nav-link" href="compare.html">Compare</a>
-    <a class="nav-link" href="model.html">Model</a>
-    <a class="nav-link" href="audit.html">Audit</a>
-    <a class="nav-link" href="intake.html">📷 Intake</a>
-    <a class="nav-link" href="insights.html">Insights</a>
-    <a class="nav-link" href="scorer.html">Scorer</a>
-    <a class="nav-link" href="multilingual.html">Multilingual</a>
-    <a class="nav-link" href="review.html">Review</a>
-    <a class="nav-link active" href="dashboard.html">Dashboard</a>
-  </div>
-</nav>
 
 <div class="page">
   <div class="page-title">Analytics Dashboard</div>
@@ -151,7 +123,7 @@
   <!-- Module Navigation -->
   <div class="section-label">All Modules</div>
   <div class="module-grid">
-    <a class="module-card" href="index.html"><div class="module-icon">🔍</div><div class="module-title">Text Analyzer</div><div class="module-desc">Sentiment, NER, key phrases</div><span class="module-status">Live</span></a>
+    <a class="module-card" href="analyzer.html"><div class="module-icon">🔍</div><div class="module-title">Text Analyzer</div><div class="module-desc">Sentiment, NER, key phrases</div><span class="module-status">Live</span></a>
     <a class="module-card" href="timeline.html"><div class="module-icon">📅</div><div class="module-title">Timeline (#1)</div><div class="module-desc">Chronological event extraction</div><span class="module-status">Live</span></a>
     <a class="module-card" href="insights.html"><div class="module-icon">🔗</div><div class="module-title">Entity Linking (#2)</div><div class="module-desc">Cross-document entity links</div><span class="module-status">Live</span></a>
     <a class="module-card" href="scorer.html"><div class="module-icon">🎯</div><div class="module-title">Confidence (#3)</div><div class="module-desc">Entity confidence scores</div><span class="module-status">Live</span></a>
@@ -229,7 +201,9 @@
 </div>
 
 <script>
-const API = 'http://localhost:8000';
+  // ParaIQ API authentication key
+  const PARAIQ_KEY = 'pk-84d8657019538fb44aeee9a6a58b2342c5b819c4cceecb3996570d9e980afa40';
+const API = 'https://nlp.para-iq.com';
 let donutChart = null, barChart = null, lineChart = null;
 
 const SENT_COLORS = {
@@ -361,7 +335,14 @@ async function loadAll() {
 
 loadAll();
 </script>
+  <script src="paraiq-sidebar.js"></script>
+  <script src="paraiq-persist.js"></script>
 </body>
 </html>
+
+
+
+
+
 
 

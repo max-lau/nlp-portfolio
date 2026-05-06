@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ParaIQ — Deposition Summary Generator</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f172a; --surface: #1e293b; --surface2: #263347;
+      --border: #334155; --purple: #7c3aed; --purple-lt: #a78bfa;
+      --purple-dk: #5b21b6; --cyan: #06b6d4; --green: #10b981;
+      --amber: #f59e0b; --red: #ef4444; --blue: #3b82f6;
+      --text: #f1f5f9; --muted: #94a3b8;
+    }
+
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    /* NAV */
+
+    /* PAGE */
+    .page { max-width: 1000px; margin: 0 auto; padding: 28px 20px 60px; }
+    .page-title { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+    .page-sub { font-size: 13px; color: var(--muted); margin-bottom: 20px; }
+
+    /* CARD */
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-bottom: 16px; }
+    .card-title { font-size: 13px; font-weight: 700; color: var(--purple-lt); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+
+    /* FIELDS */
+    .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+    @media(max-width:640px){ .field-grid { grid-template-columns: 1fr; } }
+    .field { display: flex; flex-direction: column; gap: 4px; }
+    .field label { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; }
+    .field input { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 7px 10px; border-radius: 6px; font-size: 13px; transition: border-color .2s; }
+    .field input:focus { outline: none; border-color: var(--purple); }
+    textarea.ta { width: 100%; height: 200px; background: var(--surface2); border: 1px solid var(--border); color: var(--text); font-size: 13px; font-family: 'Courier New', monospace; padding: 12px; border-radius: 7px; resize: vertical; transition: border-color .2s; }
+    textarea.ta:focus { outline: none; border-color: var(--purple); }
+    textarea.ta::placeholder { color: var(--muted); }
+
+    /* BUTTONS */
+    .btn-row { display: flex; gap: 10px; margin-top: 6px; flex-wrap: wrap; }
+    .btn { padding: 10px 20px; border-radius: 7px; font-size: 13px; font-weight: 700; cursor: pointer; border: none; transition: all .2s; }
+    .btn.primary { background: var(--purple); color: #fff; }
+    .btn.primary:hover { background: var(--purple-dk); transform: translateY(-1px); }
+    .btn.primary:disabled { background: #3b2563; color: #7c5cbf; cursor: not-allowed; transform: none; }
+    .btn.secondary { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+    .btn.secondary:hover { color: var(--text); border-color: var(--purple); }
+    .btn.pdf { background: #064e3b; color: #6ee7b7; border: 1px solid #10b981; }
+    .btn.pdf:hover { background: #065f46; }
+
+    /* CHIPS */
+    .chip-list { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+    .chip { font-size: 11px; padding: 4px 12px; border-radius: 20px; border: 1px solid var(--border); cursor: pointer; background: var(--surface2); color: var(--muted); transition: border-color .15s, color .15s; }
+    .chip:hover { border-color: var(--purple); color: var(--purple-lt); }
+
+    /* LOADER */
+    .loader { display: none; text-align: center; padding: 30px; color: var(--muted); font-size: 13px; }
+    .loader.visible { display: block; }
+    .spinner { width: 32px; height: 32px; margin: 0 auto 12px; border: 3px solid var(--border); border-top-color: var(--purple); border-radius: 50%; animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* RESULTS */
+    .results { display: none; margin-top: 24px; }
+    .results.visible { display: block; }
+
+    /* SUMMARY HEADER */
+    .summary-header { background: var(--surface); border: 1px solid var(--purple); border-radius: 10px; padding: 20px 24px; margin-bottom: 20px; }
+    .sh-title { font-size: 18px; font-weight: 800; color: var(--purple-lt); margin-bottom: 4px; }
+    .sh-meta { font-size: 12px; color: var(--muted); margin-bottom: 12px; }
+    .sh-overview { font-size: 13px; color: var(--text); line-height: 1.7; border-left: 3px solid var(--purple); padding-left: 14px; }
+    .sh-parties { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+    .party-tag { font-size: 11px; padding: 4px 12px; border-radius: 20px; background: var(--surface2); border: 1px solid var(--border); }
+    .party-tag strong { color: var(--purple-lt); }
+
+    /* SECTION CARDS */
+    .section-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 12px; overflow: hidden; }
+    .section-header { display: flex; align-items: center; gap: 10px; padding: 14px 18px; cursor: pointer; user-select: none; transition: background .15s; }
+    .section-header:hover { background: var(--surface2); }
+    .section-icon { font-size: 18px; }
+    .section-title { font-size: 13px; font-weight: 700; flex: 1; }
+    .section-count { font-size: 11px; font-weight: 700; padding: 2px 10px; border-radius: 20px; }
+    .section-chevron { font-size: 12px; color: var(--muted); transition: transform .25s; }
+    .section-chevron.open { transform: rotate(180deg); }
+    .section-body { display: none; padding: 0 18px 16px; border-top: 1px solid var(--border); }
+    .section-body.open { display: block; }
+
+    /* SECTION ITEMS */
+    .item { margin-top: 12px; padding: 12px 14px; border-radius: 8px; font-size: 13px; line-height: 1.65; }
+    .item-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; margin-bottom: 4px; }
+    .item-text { color: var(--text); }
+    .item-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+    .item-quote { font-size: 11px; font-style: italic; color: var(--muted); background: rgba(0,0,0,.3); border-radius: 4px; padding: 4px 8px; margin-top: 6px; }
+
+    /* Section color schemes */
+    .s-overview .section-header  { border-left: 3px solid var(--purple); }
+    .s-overview .section-count   { background:#4c1d95; color:var(--purple-lt); }
+    .s-admissions .section-header{ border-left: 3px solid var(--green); }
+    .s-admissions .section-count { background:#064e3b; color:#6ee7b7; }
+    .s-admissions .item          { background:#0d2e20; }
+    .s-admissions .item-label    { color: var(--green); }
+    .s-disputed .section-header  { border-left: 3px solid var(--red); }
+    .s-disputed .section-count   { background:#7f1d1d; color:#fca5a5; }
+    .s-disputed .item            { background:#2a0f0f; }
+    .s-disputed .item-label      { color: var(--red); }
+    .s-timeline .section-header  { border-left: 3px solid var(--cyan); }
+    .s-timeline .section-count   { background:#164e63; color:#67e8f9; }
+    .s-timeline .item            { background:#0c2233; }
+    .s-timeline .item-label      { color: var(--cyan); }
+    .s-legal .section-header     { border-left: 3px solid var(--amber); }
+    .s-legal .section-count      { background:#78350f; color:#fcd34d; }
+    .s-legal .item               { background:#1c1505; }
+    .s-legal .item-label         { color: var(--amber); }
+
+    /* TIMELINE specific */
+    .timeline-list { position: relative; padding-left: 20px; }
+    .timeline-list::before { content:''; position:absolute; left:6px; top:16px; bottom:0; width:2px; background:var(--border); }
+    .tl-item { position: relative; padding: 10px 12px 10px 20px; margin-top: 10px; background: #0c2233; border-radius: 8px; font-size: 13px; }
+    .tl-item::before { content:''; position:absolute; left:-14px; top:14px; width:10px; height:10px; border-radius:50%; background:var(--cyan); border:2px solid var(--bg); }
+    .tl-date { font-size: 10px; font-weight: 700; color: var(--cyan); text-transform: uppercase; margin-bottom: 3px; }
+    .tl-event { color: var(--text); line-height: 1.5; }
+    .tl-source { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* ── PRINT STYLES ── */
+    @media print {
+      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+      body { background: #fff !important; color: #000 !important; font-family: 'Times New Roman', serif; }
+      .nav, .card:first-of-type, .btn-row, .loader, .chip-list { display: none !important; }
+      .results { display: block !important; margin: 0; }
+      .page { max-width: 100%; padding: 0; }
+
+      .summary-header { background: #f8f9fa !important; border: 2px solid #5b21b6 !important; border-radius: 0; padding: 16px; margin-bottom: 16px; break-inside: avoid; }
+      .sh-title { color: #5b21b6 !important; font-size: 16px; }
+      .sh-meta { color: #666 !important; }
+      .sh-overview { color: #000 !important; border-color: #5b21b6 !important; }
+      .party-tag { background: #f3f4f6 !important; border: 1px solid #ddd !important; color: #000 !important; }
+      .party-tag strong { color: #5b21b6 !important; }
+
+      .section-card { background: #fff !important; border: 1px solid #e5e7eb !important; border-radius: 0; margin-bottom: 12px; break-inside: avoid; }
+      .section-header { background: #f9fafb !important; cursor: default; padding: 10px 14px; }
+      .section-title { color: #000 !important; font-size: 12px; }
+      .section-chevron { display: none; }
+      .section-body { display: block !important; padding: 0 14px 12px; }
+      .item { background: #f9fafb !important; border: 1px solid #e5e7eb; margin-top: 8px; padding: 8px 12px; break-inside: avoid; }
+      .item-text { color: #000 !important; font-size: 12px; }
+      .item-sub { color: #555 !important; font-size: 11px; }
+      .item-quote { background: #f3f4f6 !important; color: #555 !important; font-size: 11px; }
+      .tl-item { background: #f9fafb !important; border: 1px solid #e5e7eb; break-inside: avoid; }
+      .tl-item::before { background: #0891b2 !important; }
+      .tl-date { color: #0891b2 !important; }
+      .tl-event { color: #000 !important; }
+      .tl-source { color: #555 !important; }
+
+      .s-admissions .section-header { border-left: 3px solid #059669 !important; background: #ecfdf5 !important; }
+      .s-admissions .section-count  { background: #d1fae5 !important; color: #065f46 !important; }
+      .s-disputed .section-header   { border-left: 3px solid #dc2626 !important; background: #fef2f2 !important; }
+      .s-disputed .section-count    { background: #fee2e2 !important; color: #991b1b !important; }
+      .s-timeline .section-header   { border-left: 3px solid #0891b2 !important; background: #ecfeff !important; }
+      .s-timeline .section-count    { background: #cffafe !important; color: #164e63 !important; }
+      .s-legal .section-header      { border-left: 3px solid #d97706 !important; background: #fffbeb !important; }
+      .s-legal .section-count       { background: #fef3c7 !important; color: #92400e !important; }
+
+      .print-footer { display: block !important; text-align: center; font-size: 10px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 8px; margin-top: 20px; }
+    }
+    .print-footer { display: none; }
+  </style>
+  <link rel="stylesheet" href="paraiq-sidebar.css">
+</head>
+<body>
+
+<div class="page">
+
+  <div class="page-title">📝 Deposition Summary Generator</div>
+  <div class="page-sub">AI-powered summary across 5 sections — case overview, key admissions, disputed facts, timeline, and legal issues.</div>
+
+  <!-- INPUT -->
+  <div class="card">
+    <div class="card-title"><span>📋</span> Deposition Transcript</div>
+
+    <div class="chip-list">
+      <span style="font-size:11px;color:#64748b;align-self:center">Load example:</span>
+      <span class="chip" onclick="loadExample()">Rivera deposition</span>
+      <span class="chip" onclick="loadFromInterrogation()">📥 Load from Interrogation</span>
+    </div>
+
+    <div class="field-grid">
+      <div class="field">
+        <label>Case / Matter Name</label>
+        <input type="text" id="caseName" placeholder="e.g. People v. Rivera" />
+      </div>
+      <div class="field">
+        <label>Deponent Name</label>
+        <input type="text" id="deponentName" placeholder="e.g. Ms. Rivera" />
+      </div>
+      <div class="field">
+        <label>Examining Counsel</label>
+        <input type="text" id="examCounsel" placeholder="e.g. ADA Johnson" />
+      </div>
+      <div class="field">
+        <label>Deposition Date</label>
+        <input type="text" id="deposDate" placeholder="e.g. May 5, 2026" />
+      </div>
+    </div>
+
+    <textarea class="ta" id="transcriptInput"
+      placeholder="Paste the full deposition transcript here.
+Speaker labels are supported (Q: / A: / WITNESS: / ATTORNEY: etc.)
+
+The generator will extract:
+  • Case overview and all parties identified
+  • Key admissions and concessions made
+  • Disputed facts and denials
+  • Chronological timeline of events
+  • Legal issues, objections, and rulings"></textarea>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn primary" id="generateBtn" onclick="generateSummary()">📝 Generate Summary</button>
+    <button class="btn secondary" onclick="clearAll()">Clear</button>
+    <button class="btn pdf" id="pdfBtn" onclick="window.print()" style="display:none">🖨️ Export PDF</button>
+  </div>
+
+  <div class="loader" id="loader">
+    <div class="spinner"></div>
+    Generating deposition summary…
+  </div>
+
+  <!-- RESULTS -->
+  <div class="results" id="results">
+
+    <!-- Summary header -->
+    <div class="summary-header" id="summaryHeader">
+      <div class="sh-title" id="shTitle">—</div>
+      <div class="sh-meta" id="shMeta">—</div>
+      <div class="sh-overview" id="shOverview">—</div>
+      <div class="sh-parties" id="shParties"></div>
+    </div>
+
+    <!-- Section 1: Key Admissions -->
+    <div class="section-card s-admissions" id="secAdmissions">
+      <div class="section-header" onclick="toggleSection('admissions')">
+        <span class="section-icon">✅</span>
+        <span class="section-title">Key Admissions & Concessions</span>
+        <span class="section-count" id="cntAdmissions">0</span>
+        <span class="section-chevron open" id="chvAdmissions">▼</span>
+      </div>
+      <div class="section-body open" id="bodyAdmissions"></div>
+    </div>
+
+    <!-- Section 2: Disputed Facts -->
+    <div class="section-card s-disputed" id="secDisputed">
+      <div class="section-header" onclick="toggleSection('disputed')">
+        <span class="section-icon">❌</span>
+        <span class="section-title">Disputed Facts & Denials</span>
+        <span class="section-count" id="cntDisputed">0</span>
+        <span class="section-chevron open" id="chvDisputed">▼</span>
+      </div>
+      <div class="section-body open" id="bodyDisputed"></div>
+    </div>
+
+    <!-- Section 3: Timeline -->
+    <div class="section-card s-timeline" id="secTimeline">
+      <div class="section-header" onclick="toggleSection('timeline')">
+        <span class="section-icon">📅</span>
+        <span class="section-title">Timeline of Events</span>
+        <span class="section-count" id="cntTimeline">0</span>
+        <span class="section-chevron open" id="chvTimeline">▼</span>
+      </div>
+      <div class="section-body open" id="bodyTimeline"></div>
+    </div>
+
+    <!-- Section 4: Legal Issues -->
+    <div class="section-card s-legal" id="secLegal">
+      <div class="section-header" onclick="toggleSection('legal')">
+        <span class="section-icon">⚖️</span>
+        <span class="section-title">Legal Issues & Objections</span>
+        <span class="section-count" id="cntLegal">0</span>
+        <span class="section-chevron open" id="chvLegal">▼</span>
+      </div>
+      <div class="section-body open" id="bodyLegal"></div>
+    </div>
+
+    <div class="print-footer">
+      Generated by ParaIQ Legal NLP Platform | CONFIDENTIAL — ATTORNEY WORK PRODUCT
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+  // ParaIQ API authentication key
+  const PARAIQ_KEY = 'pk-84d8657019538fb44aeee9a6a58b2342c5b819c4cceecb3996570d9e980afa40';
+/* ── EXAMPLES ── */
+function loadExample() {
+  document.getElementById('caseName').value = 'People v. Rivera';
+  document.getElementById('deponentName').value = 'Ms. Rivera';
+  document.getElementById('examCounsel').value = 'ADA Johnson';
+  document.getElementById('deposDate').value = 'May 5, 2026';
+  document.getElementById('transcriptInput').value = `Q: Ms. Rivera, where were you on the evening of October 14th?
+A: I was at home all evening.
+Q: Can anyone confirm that?
+A: My roommate, Sarah.
+Q: We spoke with Sarah. She said she wasn't home until after midnight.
+A: Well, maybe I stepped out briefly. I don't remember exactly.
+ATTORNEY: Objection, counsel is mischaracterizing the witness's prior statement.
+JUDGE: Overruled. The witness may answer.
+Q: Did you take your car?
+A: Yes, I think so.
+Q: We have toll records showing your car crossed the Triborough Bridge at 9:43 PM. That's not nearby, is it?
+A: I... there may have been another errand. I was stressed that week.
+Q: What store did you go to?
+A: I don't recall. Somewhere nearby.
+Q: Which is it — nearby, or did you cross the bridge?
+A: I don't know. It was a long time ago.
+JUDGE: The witness will answer the question directly.
+Q: Ms. Rivera, did you know the defendant, Mr. Holt?
+A: Yes. We worked together at Meridian Capital.
+Q: For how long?
+A: About three years.
+Q: Were you aware of any offshore fund transfers involving Mr. Holt?
+A: No. I had nothing to do with that.
+Q: But you had access to the wire transfer system, correct?
+A: Yes, but I never used it for anything improper.
+Q: I'm showing you Exhibit 14 — a transfer authorization bearing your signature. Do you recognize this?
+A: I may have signed it. We signed many documents.
+Q: This document authorized a transfer of $2.3 million to a Cayman Islands account. You're saying you don't recall signing this?
+A: I sign hundreds of documents. I can't be expected to remember each one.
+ATTORNEY: Objection, asked and answered.
+JUDGE: Sustained. Move on, counsel.`;
+}
+
+function loadFromInterrogation() {
+  const stored = localStorage.getItem('deposition_transcript');
+  if (stored) {
+    const data = JSON.parse(stored);
+    document.getElementById('transcriptInput').value = data.transcript || '';
+    if (data.caseName)   document.getElementById('caseName').value = data.caseName;
+    if (data.deponent)   document.getElementById('deponentName').value = data.deponent;
+    localStorage.removeItem('deposition_transcript');
+  } else {
+    alert('No transcript found from Interrogation module. Run an analysis there first.');
+  }
+}
+
+/* ── GENERATE ── */
+async function generateSummary() {
+  const transcript = document.getElementById('transcriptInput').value.trim();
+  if (!transcript) { alert('Please paste a deposition transcript first.'); return; }
+
+  document.getElementById('generateBtn').disabled = true;
+  document.getElementById('loader').classList.add('visible');
+  document.getElementById('results').classList.remove('visible');
+  document.getElementById('pdfBtn').style.display = 'none';
+
+  try {
+    const resp = await fetch('https://nlp.para-iq.com/deposition/summarize', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-API-Key': PARAIQ_KEY },
+      body: JSON.stringify({
+        transcript,
+        case_name:    document.getElementById('caseName').value || 'Untitled Matter',
+        deponent:     document.getElementById('deponentName').value || 'Witness',
+        exam_counsel: document.getElementById('examCounsel').value || '',
+        depos_date:   document.getElementById('deposDate').value || ''
+      })
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    renderSummary(data);
+    document.getElementById('results').classList.add('visible');
+    document.getElementById('pdfBtn').style.display = '';
+  } catch(e) {
+    alert('Summary error: ' + e.message);
+  } finally {
+    document.getElementById('generateBtn').disabled = false;
+    document.getElementById('loader').classList.remove('visible');
+  }
+}
+
+/* ── RENDER ── */
+function renderSummary(d) {
+  const ov = d.case_overview || {};
+
+  // Header
+  document.getElementById('shTitle').textContent = ov.case_name || 'Deposition Summary';
+  document.getElementById('shMeta').textContent = [
+    ov.deponent ? 'Deponent: ' + ov.deponent : '',
+    ov.date ? 'Date: ' + ov.date : '',
+    ov.examining_counsel ? 'Examining Counsel: ' + ov.examining_counsel : ''
+  ].filter(Boolean).join(' · ');
+  document.getElementById('shOverview').textContent = ov.summary || '';
+
+  // Parties
+  const parties = d.parties || [];
+  document.getElementById('shParties').innerHTML = parties.map(p =>
+    `<span class="party-tag"><strong>${escHtml(p.role)}:</strong> ${escHtml(p.name)}${p.representation ? ' (' + escHtml(p.representation) + ')' : ''}</span>`
+  ).join('');
+
+  // Admissions
+  const admissions = d.key_admissions || [];
+  document.getElementById('cntAdmissions').textContent = admissions.length;
+  document.getElementById('bodyAdmissions').innerHTML = admissions.map(a => `
+    <div class="item">
+      <div class="item-label">Admission</div>
+      <div class="item-text">${escHtml(a.admission)}</div>
+      ${a.significance ? `<div class="item-sub">Significance: ${escHtml(a.significance)}</div>` : ''}
+      ${a.quote ? `<div class="item-quote">"${escHtml(a.quote)}"</div>` : ''}
+    </div>`).join('') || '<p style="color:var(--muted);font-size:12px;padding:12px 0">No admissions identified.</p>';
+
+  // Disputed facts
+  const disputed = d.disputed_facts || [];
+  document.getElementById('cntDisputed').textContent = disputed.length;
+  document.getElementById('bodyDisputed').innerHTML = disputed.map(f => `
+    <div class="item">
+      <div class="item-label">Disputed Fact</div>
+      <div class="item-text">${escHtml(f.fact)}</div>
+      ${f.deponent_position ? `<div class="item-sub">Deponent position: ${escHtml(f.deponent_position)}</div>` : ''}
+      ${f.contrary_evidence ? `<div class="item-sub" style="color:#f87171">Contrary evidence: ${escHtml(f.contrary_evidence)}</div>` : ''}
+    </div>`).join('') || '<p style="color:var(--muted);font-size:12px;padding:12px 0">No disputed facts identified.</p>';
+
+  // Timeline
+  const timeline = d.timeline || [];
+  document.getElementById('cntTimeline').textContent = timeline.length;
+  document.getElementById('bodyTimeline').innerHTML = timeline.length
+    ? `<div class="timeline-list">${timeline.map(e => `
+        <div class="tl-item">
+          <div class="tl-date">${escHtml(e.date_or_period || e.date || '—')}</div>
+          <div class="tl-event">${escHtml(e.event)}</div>
+          ${e.source ? `<div class="tl-source">Source: ${escHtml(e.source)}</div>` : ''}
+        </div>`).join('')}</div>`
+    : '<p style="color:var(--muted);font-size:12px;padding:12px 0">No timeline events extracted.</p>';
+
+  // Legal issues
+  const legal = d.legal_issues || [];
+  document.getElementById('cntLegal').textContent = legal.length;
+  document.getElementById('bodyLegal').innerHTML = legal.map(l => `
+    <div class="item">
+      <div class="item-label">Legal Issue</div>
+      <div class="item-text">${escHtml(l.issue)}</div>
+      ${l.context ? `<div class="item-sub">${escHtml(l.context)}</div>` : ''}
+      ${l.objections ? `<div class="item-sub" style="color:#fcd34d">Objections/Rulings: ${escHtml(l.objections)}</div>` : ''}
+    </div>`).join('') || '<p style="color:var(--muted);font-size:12px;padding:12px 0">No legal issues identified.</p>';
+}
+
+/* ── TOGGLE SECTIONS ── */
+function toggleSection(id) {
+  const body = document.getElementById('body' + id.charAt(0).toUpperCase() + id.slice(1));
+  const chv  = document.getElementById('chv'  + id.charAt(0).toUpperCase() + id.slice(1));
+  body.classList.toggle('open');
+  chv.classList.toggle('open');
+}
+
+/* ── CLEAR ── */
+function clearAll() {
+  document.getElementById('transcriptInput').value = '';
+  ['caseName','deponentName','examCounsel','deposDate'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('results').classList.remove('visible');
+  document.getElementById('pdfBtn').style.display = 'none';
+}
+
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Auto-load from Interrogation
+window.addEventListener('load', () => {
+  const stored = localStorage.getItem('deposition_transcript');
+  if (stored) {
+    try {
+      const data = JSON.parse(stored);
+      if (data.transcript) {
+        document.getElementById('transcriptInput').value = data.transcript;
+        if (data.caseName) document.getElementById('caseName').value = data.caseName;
+        if (data.deponent) document.getElementById('deponentName').value = data.deponent;
+        localStorage.removeItem('deposition_transcript');
+      }
+    } catch(e) {}
+  }
+});
+</script>
+  <script src="paraiq-sidebar.js"></script>
+  <script src="paraiq-persist.js"></script>
+  <script src="paraiq-export.js"></script>
+
+  <script>
+  document.addEventListener("DOMContentLoaded", function() {
+    if (typeof ParaIQExport !== "undefined") {
+      ParaIQExport.injectButton("deposition", "Export Deposition PDF");
+    }
+  });
+  </script>
+</body>
+</html>

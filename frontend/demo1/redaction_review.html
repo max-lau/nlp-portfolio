@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Redaction Review — NLP Legal Analyzer</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f1f5f9; color: #1a1a1a; }
+    .page { padding: 1.5rem 2rem; max-width: 1100px; margin: 0 auto; }
+    .page-title { font-size: 22px; font-weight: 700; color: #0f172a; margin-bottom: 4px; }
+    .page-sub { font-size: 13px; color: #64748b; margin-bottom: 1.5rem; }
+    .badges { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 1.25rem; }
+    .badge { font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 20px; }
+    .badge-purple { background: #ede9fe; color: #6d28d9; }
+    .badge-green  { background: #d1fae5; color: #065f46; }
+    .badge-orange { background: #ffedd5; color: #9a3412; }
+
+    /* Layout */
+    .layout { display: grid; grid-template-columns: 1fr 380px; gap: 16px; }
+    .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 1.25rem; margin-bottom: 12px; }
+    .card-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #9ca3af; margin-bottom: 12px; }
+
+    /* Text editor */
+    .editor-wrap { position: relative; }
+    .editor-toolbar { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; align-items: center; }
+    .tool-btn { padding: 5px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; border: 1.5px solid #e5e7eb; background: #fff; color: #374151; transition: all 0.15s; }
+    .tool-btn:hover { border-color: #7c3aed; color: #7c3aed; }
+    .tool-btn.active { background: #7c3aed; color: #fff; border-color: #7c3aed; }
+    .tool-btn.danger { border-color: #fecaca; color: #dc2626; }
+    .tool-btn.danger:hover { background: #dc2626; color: #fff; }
+    .tool-btn.success { border-color: #bbf7d0; color: #059669; }
+    .tool-btn.success:hover { background: #059669; color: #fff; }
+
+    /* Redaction editor */
+    #redactionEditor { width: 100%; min-height: 280px; padding: 14px; border: 1.5px solid #e5e7eb; border-radius: 10px; font-size: 14px; line-height: 1.9; background: #fff; resize: vertical; font-family: inherit; }
+    #redactionEditor:focus { outline: none; border-color: #7c3aed; box-shadow: 0 0 0 3px rgba(124,58,237,0.1); }
+
+    /* Highlighted redactions in display */
+    .redact-display { width: 100%; min-height: 280px; padding: 14px; border: 1.5px solid #e5e7eb; border-radius: 10px; font-size: 14px; line-height: 1.9; background: #fafafa; white-space: pre-wrap; word-break: break-word; }
+    .highlight-span { display: inline; padding: 1px 4px; border-radius: 3px; cursor: pointer; font-weight: 600; font-size: 12px; }
+    .highlight-span:hover { opacity: 0.8; }
+    .hl-PERSON     { background: #fee2e2; color: #991b1b; }
+    .hl-OTHER      { background: #ffedd5; color: #9a3412; }
+    .hl-ADDRESS    { background: #fef9c3; color: #713f12; }
+    .hl-SETTLEMENT { background: #dcfce7; color: #14532d; }
+    .hl-MINOR      { background: #fce7f3; color: #831843; }
+    .hl-PRIVILEGE  { background: #e0e7ff; color: #1e3a8a; }
+    .hl-EMAIL      { background: #fef3c7; color: #92400e; }
+    .hl-MEDICAL    { background: #d1fae5; color: #065f46; }
+    .hl-DEFAULT    { background: #f3f4f6; color: #374151; }
+
+    /* Finding items in review panel */
+    .finding-review-item {
+      display: flex; flex-direction: column; gap: 4px;
+      padding: 10px 12px; border-radius: 8px; margin-bottom: 6px;
+      border: 1.5px solid #e5e7eb; background: #f9fafb;
+      transition: all 0.15s;
+    }
+    .finding-review-item.approved { border-color: #bbf7d0; background: #f0fdf4; }
+    .finding-review-item.rejected { border-color: #fecaca; background: #fef2f2; opacity: 0.6; }
+    .finding-top { display: flex; align-items: center; gap: 8px; }
+    .finding-cat { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px; }
+    .finding-text-label { font-size: 13px; font-weight: 600; color: #1e293b; flex: 1; }
+    .finding-score { font-size: 11px; color: #9ca3af; }
+    .finding-reason { font-size: 11px; color: #64748b; padding-left: 2px; }
+    .finding-actions { display: flex; gap: 6px; margin-top: 4px; }
+    .action-btn { padding: 3px 10px; border-radius: 5px; font-size: 11px; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s; }
+    .action-approve { background: #d1fae5; color: #065f46; }
+    .action-approve:hover, .action-approve.active { background: #059669; color: #fff; }
+    .action-reject  { background: #fee2e2; color: #991b1b; }
+    .action-reject:hover, .action-reject.active { background: #dc2626; color: #fff; }
+
+    /* Add manual redaction */
+    .add-redact-row { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+    .add-redact-row input { flex: 1; padding: 7px 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px; min-width: 120px; }
+    .add-redact-row select { padding: 7px 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px; }
+    .add-redact-row button { padding: 7px 14px; background: #7c3aed; color: #fff; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
+
+    /* Confidence threshold */
+    .slider-row { display: flex; align-items: center; gap: 10px; }
+    .slider-row input[type=range] { flex: 1; accent-color: #7c3aed; }
+    .slider-val { font-size: 13px; font-weight: 700; color: #7c3aed; min-width: 32px; }
+
+    /* Stats */
+    .stats-mini { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+    .stat-mini { background: #f8fafc; border-radius: 8px; padding: 10px; text-align: center; }
+    .stat-mini-num { font-size: 22px; font-weight: 800; color: #7c3aed; }
+    .stat-mini-label { font-size: 10px; color: #9ca3af; text-transform: uppercase; }
+
+    /* Action bar */
+    .action-bar { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+    .btn { padding: 10px 20px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s; }
+    .btn.primary  { background: #7c3aed; color: #fff; }
+    .btn.primary:hover { background: #6d28d9; }
+    .btn.success  { background: #059669; color: #fff; }
+    .btn.success:hover { background: #047857; }
+    .btn.outline  { background: #fff; color: #374151; border: 1.5px solid #e5e7eb; }
+    .btn.outline:hover { border-color: #7c3aed; color: #7c3aed; }
+    .btn.danger   { background: #ef4444; color: #fff; }
+    .btn.danger:hover { background: #dc2626; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* Input area */
+    textarea.input-ta { width: 100%; min-height: 120px; padding: 12px; border: 1.5px solid #e5e7eb; border-radius: 8px; font-size: 13px; line-height: 1.6; resize: vertical; background: #fff; font-family: inherit; }
+    textarea.input-ta:focus { outline: none; border-color: #7c3aed; }
+
+    /* Audit log */
+    .audit-item { font-size: 12px; color: #64748b; padding: 5px 0; border-bottom: 1px solid #f3f4f6; display: flex; gap: 8px; }
+    .audit-time { color: #9ca3af; white-space: nowrap; }
+    .audit-action { font-weight: 600; color: #374151; }
+
+    /* Loader */
+    .loader { text-align: center; padding: 1.5rem; color: #64748b; display: none; }
+    .loader.visible { display: block; }
+    .spinner { display: inline-block; width: 28px; height: 28px; border: 3px solid #e5e7eb; border-top-color: #7c3aed; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 6px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Certificate */
+    .cert-box { background: #f0fdf4; border: 1.5px solid #bbf7d0; border-radius: 10px; padding: 14px; margin-top: 12px; display: none; }
+    .cert-box.visible { display: block; }
+    .cert-title { font-size: 12px; font-weight: 700; color: #065f46; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .cert-line { font-size: 12px; color: #374151; margin-bottom: 3px; }
+
+    @media (max-width: 768px) { .layout { grid-template-columns: 1fr; } }
+  </style>
+  <link rel="stylesheet" href="paraiq-sidebar.css">
+</head>
+<body>
+
+<div class="page">
+  <div class="page-title">Redaction Review & Approval</div>
+  <div class="page-sub">Attorney review queue — approve, reject, and manually add redactions before finalizing documents.</div>
+  <div class="badges">
+    <span class="badge badge-purple">Attorney Review</span>
+    <span class="badge badge-green">Approve / Reject</span>
+    <span class="badge badge-orange">Manual Redactions</span>
+  </div>
+
+  <!-- Step 1: Input -->
+  <div class="card">
+    <div class="card-title">Step 1 — Paste Text or Load from Redaction</div>
+    <textarea class="input-ta" id="inputText" placeholder="Paste legal text to review for redaction..."></textarea>
+    <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;align-items:center">
+      <div>
+        <div style="font-size:11px;color:#9ca3af;margin-bottom:4px">CONFIDENCE THRESHOLD</div>
+        <div class="slider-row">
+          <input type="range" id="threshold" min="0.1" max="0.9" step="0.05" value="0.4"
+                 oninput="document.getElementById('threshVal').textContent=parseFloat(this.value).toFixed(2)">
+          <span class="slider-val" id="threshVal">0.40</span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;margin-top:14px">
+        <input type="checkbox" id="useClaude" checked style="accent-color:#7c3aed">
+        <label for="useClaude" style="font-size:13px;color:#374151">Claude contextual detection</label>
+      </div>
+      <button class="btn primary" style="margin-top:14px" onclick="runReview()">Analyze for Review</button>
+      <button class="btn outline" style="margin-top:14px" onclick="loadExample()">Load Example</button>
+    </div>
+  </div>
+
+  <div class="loader" id="loader">
+    <div class="spinner"></div>
+    <div>Running triple-layer detection...</div>
+  </div>
+
+  <!-- Step 2: Review layout -->
+  <div id="reviewSection" style="display:none">
+    <div class="layout">
+
+      <!-- Left: Text display + editor -->
+      <div>
+        <div class="card">
+          <div class="card-title">Step 2 — Review Document</div>
+          <div class="editor-toolbar">
+            <button class="tool-btn active" id="btnHighlight" onclick="setMode('highlight')">Highlighted View</button>
+            <button class="tool-btn" id="btnRedacted" onclick="setMode('redacted')">Redacted View</button>
+            <button class="tool-btn" id="btnEdit" onclick="setMode('edit')">Edit Mode</button>
+            <span style="font-size:11px;color:#9ca3af;margin-left:auto">Click highlighted text to reject that redaction</span>
+          </div>
+
+          <!-- Highlighted view -->
+          <div id="viewHighlight" class="redact-display"></div>
+          <!-- Redacted view -->
+          <div id="viewRedacted" class="redact-display" style="display:none"></div>
+          <!-- Edit mode -->
+          <textarea id="viewEdit" class="input-ta" style="display:none;min-height:280px"></textarea>
+        </div>
+
+        <!-- Manual redaction -->
+        <div class="card">
+          <div class="card-title">Add Manual Redaction</div>
+          <p style="font-size:12px;color:#64748b;margin-bottom:8px">Type or paste exact text to redact that was missed by auto-detection.</p>
+          <div class="add-redact-row">
+            <input type="text" id="manualText" placeholder="Exact text to redact...">
+            <select id="manualCategory">
+              <option value="PERSON">PERSON</option>
+              <option value="ADDRESS">ADDRESS</option>
+              <option value="OTHER">OTHER (SSN/Phone)</option>
+              <option value="SETTLEMENT">SETTLEMENT</option>
+              <option value="MINOR">MINOR</option>
+              <option value="PRIVILEGE">PRIVILEGE</option>
+              <option value="MEDICAL">MEDICAL</option>
+              <option value="EMAIL">EMAIL</option>
+            </select>
+            <button onclick="addManualRedaction()">Add</button>
+          </div>
+        </div>
+
+        <!-- Finalize -->
+        <div class="card">
+          <div class="card-title">Step 3 — Finalize & Export</div>
+          <!-- Court export metadata -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+            <div><div style="font-size:11px;color:#9ca3af;margin-bottom:3px">CASE NAME</div>
+            <input type="text" id="caseName" placeholder="Smith v. Jones" style="width:100%;padding:7px 10px;border:1px solid #e5e7eb;border-radius:6px;font-size:13px"></div>
+            <div><div style="font-size:11px;color:#9ca3af;margin-bottom:3px">COURT</div>
+            <input type="text" id="courtName" placeholder="Supreme Court, New York County" style="width:100%;padding:7px 10px;border:1px solid #e5e7eb;border-radius:6px;font-size:13px"></div>
+            <div><div style="font-size:11px;color:#9ca3af;margin-bottom:3px">INDEX NUMBER</div>
+            <input type="text" id="indexNumber" placeholder="Index No. 123456/2025" style="width:100%;padding:7px 10px;border:1px solid #e5e7eb;border-radius:6px;font-size:13px"></div>
+            <div><div style="font-size:11px;color:#9ca3af;margin-bottom:3px">ATTORNEY NAME</div>
+            <input type="text" id="attorneyName" placeholder="Jane Smith, Esq. Bar No. 1234567" style="width:100%;padding:7px 10px;border:1px solid #e5e7eb;border-radius:6px;font-size:13px"></div>
+            <div><div style="font-size:11px;color:#9ca3af;margin-bottom:3px">DOCUMENT TYPE</div>
+            <select id="documentType" style="width:100%;padding:7px 10px;border:1px solid #e5e7eb;border-radius:6px;font-size:13px">
+              <option>Legal Document</option><option>Affidavit</option><option>Motion</option>
+              <option>Complaint</option><option>Deposition Transcript</option>
+              <option>Settlement Agreement</option><option>Intake Form</option><option>Medical Record</option>
+            </select></div>
+          </div>
+          <div class="action-bar">
+            <button class="btn success" onclick="finalizeRedactions()">Approve All &amp; Finalize</button>
+            <button class="btn outline" onclick="copyFinal()">Copy Redacted Text</button>
+            <button class="btn outline" onclick="downloadCert()">Download Certificate</button>
+            <button class="btn primary" onclick="exportCourtPdf()" id="btnCourtPdf" disabled>Download Court PDF</button>
+            <button class="btn danger" onclick="resetReview()">Reset</button>
+          </div>
+
+          <!-- Redaction certificate -->
+          <div class="cert-box" id="certBox">
+            <div class="cert-title">Redaction Certificate</div>
+            <div class="cert-line" id="certDate"></div>
+            <div class="cert-line" id="certCount"></div>
+            <div class="cert-line" id="certCategories"></div>
+            <div class="cert-line" id="certApproved"></div>
+            <div class="cert-line" id="certRejected"></div>
+            <div class="cert-line" id="certManual"></div>
+            <div class="cert-line" id="certConfidence"></div>
+            <div style="margin-top:8px;font-size:11px;color:#047857;font-style:italic">
+              This certificate confirms attorney review and approval of all redactions.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Review panel -->
+      <div>
+        <!-- Stats -->
+        <div class="card">
+          <div class="card-title">Detection Summary</div>
+          <div class="stats-mini">
+            <div class="stat-mini"><div class="stat-mini-num" id="statTotal">0</div><div class="stat-mini-label">Detected</div></div>
+            <div class="stat-mini"><div class="stat-mini-num" id="statApproved">0</div><div class="stat-mini-label">Approved</div></div>
+            <div class="stat-mini"><div class="stat-mini-num" id="statRejected">0</div><div class="stat-mini-label">Rejected</div></div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="tool-btn success" onclick="approveAll()" style="flex:1">Approve All</button>
+            <button class="tool-btn danger" onclick="rejectAll()" style="flex:1">Reject All</button>
+          </div>
+        </div>
+
+        <!-- Findings list -->
+        <div class="card" style="max-height:420px;overflow-y:auto">
+          <div class="card-title">Redaction Findings</div>
+          <div id="findingsPanel"></div>
+        </div>
+
+        <!-- Audit log -->
+        <div class="card">
+          <div class="card-title">Review Audit Log</div>
+          <div id="auditLog" style="max-height:180px;overflow-y:auto">
+            <div style="font-size:12px;color:#9ca3af;text-align:center;padding:1rem">No actions yet.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ParaIQ API authentication key
+  const PARAIQ_KEY = 'pk-84d8657019538fb44aeee9a6a58b2342c5b819c4cceecb3996570d9e980afa40';
+const API = 'https://nlp.para-iq.com';
+
+var findings      = [];   // all detected findings
+var findingStates = {};   // id -> 'approved' | 'rejected' | 'pending'
+var manualFindings = [];  // manually added redactions
+var originalText  = '';
+var auditLog      = [];
+var currentMode   = 'highlight';
+
+var EXAMPLE_TEXT = 'IN THE MATTER OF: Chen v. Rodriguez\n\nClient: Michael Chen (DOB: 04/12/1975, SSN: 567-89-0123)\nAddress: 892 Riverside Drive, Apt 4B, New York, NY 10032\nPhone: 646-555-0177 | Email: mchen@lawfirm.com\n\nThe parties have agreed to a confidential settlement of $1,750,000. This agreement is protected under attorney-client privilege and shall not be disclosed to third parties. The minor child (age 9) shall receive a structured settlement administered by the guardian. Dr. Patricia Wong (NPI: 9876543210) has provided medical records indicating PTSD diagnosis. Protected witness testimony (Witness B) corroborates the timeline.';
+
+function loadExample() {
+  document.getElementById('inputText').value = EXAMPLE_TEXT;
+}
+
+// ── Run analysis ──────────────────────────────────────────────────────────────
+async function runReview() {
+  var text = document.getElementById('inputText').value.trim();
+  if (!text) { alert('Please enter text to review.'); return; }
+
+  originalText = text;
+  findings = [];
+  findingStates = {};
+  manualFindings = [];
+  auditLog = [];
+
+  document.getElementById('loader').className = 'loader visible';
+  document.getElementById('reviewSection').style.display = 'none';
+
+  var payload = {
+    text:       text,
+    threshold:  parseFloat(document.getElementById('threshold').value),
+    style:      'label',
+    use_claude: document.getElementById('useClaude').checked,
+  };
+
+  try {
+    var resp = await fetch(API + '/redact/text', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload),
+    });
+    var data = await resp.json();
+    document.getElementById('loader').className = 'loader';
+
+    if (!resp.ok) { alert('Error: ' + (data.detail || 'Analysis failed')); return; }
+
+    // Assign IDs to findings
+    findings = (data.findings || []).map(function(f, i) {
+      return Object.assign({}, f, { id: i });
+    });
+    findings.forEach(function(f) { findingStates[f.id] = 'pending'; });
+
+    renderAll();
+    document.getElementById('reviewSection').style.display = 'block';
+    addAudit('Analysis complete', findings.length + ' findings detected');
+  } catch(err) {
+    document.getElementById('loader').className = 'loader';
+    alert('Error: ' + err.message);
+  }
+}
+
+// ── Render all views ──────────────────────────────────────────────────────────
+function renderAll() {
+  renderHighlight();
+  renderRedacted();
+  renderFindings();
+  renderStats();
+  updateViews();
+}
+
+function getAllActive() {
+  var active = findings.filter(function(f) { return findingStates[f.id] !== 'rejected'; });
+  var manual = manualFindings;
+  return active.concat(manual);
+}
+
+function renderHighlight() {
+  var text = originalText;
+  var active = getAllActive().sort(function(a,b){ return b.start - a.start; });
+  var html = escHtml(text);
+
+  // Build char array for highlighting
+  var chars = text.split('');
+  var tags  = {};
+  getAllActive().forEach(function(f) {
+    var cat = (f.category || f.entity_type || 'DEFAULT').replace(/[^A-Z_]/g,'');
+    var cls = 'hl-' + cat;
+    var fid = f.id !== undefined ? f.id : ('m' + f.manualId);
+    var state = findingStates[fid] || 'pending';
+    var extraStyle = state === 'rejected' ? 'opacity:0.3;text-decoration:line-through;' : '';
+    if (!tags[f.start]) tags[f.start] = '';
+    if (!tags[f.end])   tags[f.end]   = '';
+    tags[f.start] += '<span class="highlight-span ' + cls + '" style="' + extraStyle + '" title="' + escHtml(f.reason||f.category||'') + '" onclick="toggleFinding(' + JSON.stringify(fid) + ')">';
+    tags[f.end]   = '</span>' + (tags[f.end] || '');
+  });
+
+  var result = '';
+  for (var i = 0; i <= text.length; i++) {
+    if (tags[i]) result += tags[i];
+    if (i < text.length) result += escHtml(text[i]);
+  }
+  document.getElementById('viewHighlight').innerHTML = result;
+}
+
+function renderRedacted() {
+  var text = originalText;
+  var active = getAllActive().sort(function(a,b){ return b.start - a.start; });
+  var chars = text.split('');
+  active.forEach(function(f) {
+    var label = f.category || f.entity_type || 'REDACTED';
+    var replacement = '[' + label + ']';
+    chars.splice(f.start, f.end - f.start, replacement);
+  });
+  document.getElementById('viewRedacted').textContent = chars.join('');
+}
+
+function renderFindings() {
+  var container = document.getElementById('findingsPanel');
+  var allFindings = findings.concat(manualFindings);
+
+  if (allFindings.length === 0) {
+    container.innerHTML = '<div style="text-align:center;color:#9ca3af;padding:1rem;font-size:13px">No findings yet.</div>';
+    return;
+  }
+
+  container.innerHTML = allFindings.map(function(f) {
+    var fid = f.id !== undefined ? f.id : ('m' + f.manualId);
+    var state = findingStates[fid] || 'pending';
+    var cat   = f.category || f.entity_type || 'OTHER';
+    var catClass = getCatClass(cat);
+    var isManual = f.manualId !== undefined;
+
+    return (
+      '<div class="finding-review-item ' + state + '" id="fi-' + fid + '">' +
+        '<div class="finding-top">' +
+          '<span class="finding-cat" style="' + catClass + '">' + cat + '</span>' +
+          '<span class="finding-text-label">' + escHtml(f.text || '') + '</span>' +
+          (isManual ? '<span style="font-size:10px;color:#7c3aed;font-weight:600">MANUAL</span>' : '') +
+          '<span class="finding-score">' + Math.round((f.score||0)*100) + '%</span>' +
+        '</div>' +
+        (f.reason ? '<div class="finding-reason">' + escHtml(f.reason) + '</div>' : '') +
+        '<div class="finding-actions">' +
+          '<button class="action-btn action-approve ' + (state==='approved'?'active':'') + '" onclick="setFindingState(\'' + fid + '\',\'approved\')">Approve</button>' +
+          '<button class="action-btn action-reject '  + (state==='rejected'?'active':'') + '" onclick="setFindingState(\'' + fid + '\',\'rejected\')">Reject</button>' +
+        '</div>' +
+      '</div>'
+    );
+  }).join('');
+}
+
+function renderStats() {
+  var total    = findings.length + manualFindings.length;
+  var approved = Object.values(findingStates).filter(function(s){ return s==='approved'; }).length;
+  var rejected = Object.values(findingStates).filter(function(s){ return s==='rejected'; }).length;
+  document.getElementById('statTotal').textContent    = total;
+  document.getElementById('statApproved').textContent = approved + manualFindings.length;
+  document.getElementById('statRejected').textContent = rejected;
+}
+
+// ── Finding state management ──────────────────────────────────────────────────
+function setFindingState(fid, state) {
+  findingStates[fid] = state;
+  addAudit(state.charAt(0).toUpperCase() + state.slice(1), 'Finding ID ' + fid);
+  renderAll();
+}
+
+function toggleFinding(fid) {
+  var current = findingStates[fid] || 'pending';
+  var next = current === 'rejected' ? 'approved' : 'rejected';
+  setFindingState(fid, next);
+}
+
+function approveAll() {
+  findings.forEach(function(f){ findingStates[f.id] = 'approved'; });
+  addAudit('Approve All', findings.length + ' findings approved');
+  renderAll();
+}
+
+function rejectAll() {
+  findings.forEach(function(f){ findingStates[f.id] = 'rejected'; });
+  addAudit('Reject All', findings.length + ' findings rejected');
+  renderAll();
+}
+
+// ── Manual redaction ──────────────────────────────────────────────────────────
+var manualCounter = 0;
+
+function addManualRedaction() {
+  var text = document.getElementById('manualText').value.trim();
+  var cat  = document.getElementById('manualCategory').value;
+  if (!text) { alert('Please enter text to redact.'); return; }
+
+  // Find position in original text
+  var idx = originalText.toLowerCase().indexOf(text.toLowerCase());
+  if (idx === -1) { alert('Text not found in document.'); return; }
+
+  var mf = {
+    manualId: manualCounter++,
+    text:     originalText.slice(idx, idx + text.length),
+    category: cat,
+    entity_type: cat,
+    start:    idx,
+    end:      idx + text.length,
+    score:    1.0,
+    source:   'manual',
+    reason:   'Manually added by attorney',
+  };
+  manualFindings.push(mf);
+  findingStates['m' + mf.manualId] = 'approved';
+  document.getElementById('manualText').value = '';
+  addAudit('Manual Redaction Added', escHtml(text) + ' as ' + cat);
+  renderAll();
+}
+
+// ── View mode switching ───────────────────────────────────────────────────────
+function setMode(mode) {
+  currentMode = mode;
+  updateViews();
+  document.querySelectorAll('.tool-btn').forEach(function(b){ b.classList.remove('active'); });
+  var map = {highlight:'btnHighlight', redacted:'btnRedacted', edit:'btnEdit'};
+  if (map[mode]) document.getElementById(map[mode]).classList.add('active');
+}
+
+function updateViews() {
+  document.getElementById('viewHighlight').style.display = currentMode==='highlight' ? 'block' : 'none';
+  document.getElementById('viewRedacted').style.display  = currentMode==='redacted'  ? 'block' : 'none';
+  document.getElementById('viewEdit').style.display      = currentMode==='edit'      ? 'block' : 'none';
+  if (currentMode === 'edit') {
+    document.getElementById('viewEdit').value = getFinalText();
+  }
+}
+
+// ── Finalize ──────────────────────────────────────────────────────────────────
+function getFinalText() {
+  renderRedacted();
+  return document.getElementById('viewRedacted').textContent;
+}
+
+async function exportCourtPdf() {
+  var finalText = getFinalText();
+  var approved  = Object.values(findingStates).filter(function(s){ return s==='approved'; }).length;
+  var rejected  = Object.values(findingStates).filter(function(s){ return s==='rejected'; }).length;
+  var avgConf   = findings.length > 0 ? findings.reduce(function(s,f){ return s+(f.score||0); },0)/findings.length : 0;
+
+  var payload = {
+    original_text:    originalText,
+    redacted_text:    finalText,
+    findings:         findings.concat(manualFindings),
+    case_name:        document.getElementById('caseName').value || 'IN THE MATTER OF: [Case Name]',
+    court_name:       document.getElementById('courtName').value || 'Supreme Court, New York County',
+    index_number:     document.getElementById('indexNumber').value || '',
+    attorney_name:    document.getElementById('attorneyName').value || '',
+    document_type:    document.getElementById('documentType').value || 'Legal Document',
+    approved_count:   approved + manualFindings.length,
+    rejected_count:   rejected,
+    manual_count:     manualFindings.length,
+    confidence_score: avgConf,
+  };
+
+  try {
+    document.getElementById('btnCourtPdf').textContent = 'Generating...';
+    document.getElementById('btnCourtPdf').disabled = true;
+    var resp = await fetch(API + '/export/redaction-report', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload),
+    });
+    if (!resp.ok) { alert('Export failed'); return; }
+    var blob = await resp.blob();
+    var url  = URL.createObjectURL(blob);
+    var a    = document.createElement('a');
+    a.href = url;
+    a.download = 'redacted_court_document.pdf';
+    a.click();
+    URL.revokeObjectURL(url);
+    addAudit('Court PDF exported', payload.case_name);
+  } catch(err) {
+    alert('Export error: ' + err.message);
+  } finally {
+    document.getElementById('btnCourtPdf').textContent = 'Download Court PDF';
+    document.getElementById('btnCourtPdf').disabled = false;
+  }
+}
+
+
+
+function finalizeRedactions() {
+  var finalText = getFinalText();
+  var approved  = Object.values(findingStates).filter(function(s){ return s==='approved'; }).length + manualFindings.length;
+  var rejected  = Object.values(findingStates).filter(function(s){ return s==='rejected'; }).length;
+  var avgConf   = findings.length > 0 ? Math.round(findings.reduce(function(s,f){ return s+(f.score||0); },0)/findings.length*100) : 0;
+
+  document.getElementById('certDate').textContent        = 'Date: ' + new Date().toLocaleString();
+  document.getElementById('certCount').textContent       = 'Total findings detected: ' + (findings.length + manualFindings.length);
+  document.getElementById('certApproved').textContent   = 'Approved redactions: ' + approved;
+  document.getElementById('certRejected').textContent   = 'Rejected (retained): ' + rejected;
+  document.getElementById('certManual').textContent     = 'Manual redactions added: ' + manualFindings.length;
+  document.getElementById('certConfidence').textContent = 'Average AI confidence: ' + avgConf + '%';
+
+  var cats = [...new Set(findings.map(function(f){ return f.category||f.entity_type; }))];
+  document.getElementById('certCategories').textContent = 'Categories: ' + cats.join(', ');
+
+  document.getElementById('certBox').className = 'cert-box visible';
+  document.getElementById('btnCourtPdf').disabled = false;
+  document.getElementById('btnCourtPdf').disabled = false;
+  addAudit('Finalized', approved + ' redactions approved, ' + rejected + ' rejected');
+  setMode('redacted');
+}
+
+function copyFinal() {
+  var text = getFinalText();
+  navigator.clipboard.writeText(text).then(function(){ alert('Redacted text copied to clipboard.'); });
+}
+
+function downloadCert() {
+  var cert = document.getElementById('certBox');
+  if (!cert.classList.contains('visible')) { alert('Please finalize first.'); return; }
+  var lines = Array.from(cert.querySelectorAll('.cert-line')).map(function(el){ return el.textContent; });
+  var content = 'REDACTION CERTIFICATE\n' + '='.repeat(40) + '\n' + lines.join('\n') + '\nThis certificate confirms attorney review and approval of all redactions.';
+  var blob = new Blob([content], {type:'text/plain'});
+  var url  = URL.createObjectURL(blob);
+  var a    = document.createElement('a'); a.href=url; a.download='redaction_certificate.txt'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function resetReview() {
+  if (!confirm('Reset all review progress?')) return;
+  findings=[]; findingStates={}; manualFindings=[]; auditLog=[]; originalText='';
+  document.getElementById('reviewSection').style.display='none';
+  document.getElementById('inputText').value='';
+  document.getElementById('certBox').className='cert-box';
+}
+
+// ── Audit log ─────────────────────────────────────────────────────────────────
+function addAudit(action, detail) {
+  var now = new Date().toLocaleTimeString();
+  auditLog.unshift({time: now, action: action, detail: detail});
+  var container = document.getElementById('auditLog');
+  container.innerHTML = auditLog.slice(0,20).map(function(entry){
+    return '<div class="audit-item"><span class="audit-time">' + entry.time + '</span><span class="audit-action">' + entry.action + '</span><span>' + entry.detail + '</span></div>';
+  }).join('');
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function getCatClass(cat) {
+  var colors = {
+    PERSON:'background:#fee2e2;color:#991b1b',
+    OTHER:'background:#ffedd5;color:#9a3412',
+    ADDRESS:'background:#fef9c3;color:#713f12',
+    SETTLEMENT:'background:#dcfce7;color:#14532d',
+    MINOR:'background:#fce7f3;color:#831843',
+    PRIVILEGE:'background:#e0e7ff;color:#1e3a8a',
+    EMAIL:'background:#fef3c7;color:#92400e',
+    MEDICAL:'background:#d1fae5;color:#065f46',
+  };
+  return colors[cat] || 'background:#f3f4f6;color:#374151';
+}
+
+function escHtml(str) {
+  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+  <script src="paraiq-sidebar.js"></script>
+  <script src="paraiq-persist.js"></script>
+  <script src="paraiq-export.js"></script>
+
+  <script>
+  document.addEventListener("DOMContentLoaded", function() {
+    if (typeof ParaIQExport !== "undefined") {
+      ParaIQExport.injectButton("redaction_review", "Export Redact Review PDF");
+    }
+  });
+  </script>
+</body>
+</html>

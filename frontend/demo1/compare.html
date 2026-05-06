@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -7,12 +7,6 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f1f5f9; color: #1a1a1a; }
-    .nav { background: #0f172a; padding: 0 2rem; display: flex; align-items: center; gap: 1.5rem; height: 56px; }
-    .nav-brand { font-size: 15px; font-weight: 700; color: #fff; }
-    .nav-links { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
-    .nav-link { font-size: 11px; font-weight: 500; padding: 5px 10px; border-radius: 6px; color: #94a3b8; text-decoration: none; border: none; background: transparent; cursor: pointer; white-space: nowrap; }
-    .nav-link:hover { background: #1e293b; color: #fff; }
-    .nav-link.active { background: #7c3aed; color: #fff; }
     .page { padding: 1.5rem 2rem; max-width: 1000px; margin: 0 auto; }
     .page-title { font-size: 22px; font-weight: 700; color: #0f172a; margin-bottom: 4px; }
     .page-sub { font-size: 13px; color: #64748b; margin-bottom: 1.5rem; }
@@ -45,27 +39,19 @@
     .struct-cell { font-size: 12px; padding: 8px; background: #f9fafb; border-radius: 6px; text-align: center; }
     .struct-cell strong { display: block; font-size: 16px; color: #0f172a; }
     .empty { color: #9ca3af; font-size: 12px; font-style: italic; }
+    .clause-item { font-size: 12px; padding: 7px 12px; border-radius: 7px; margin-bottom: 6px; line-height: 1.55; }
+    .clause-added    { background:#ecfdf5; border-left:3px solid #059669; color:#065f46; }
+    .clause-removed  { background:#fef2f2; border-left:3px solid #dc2626; color:#991b1b; }
+    .clause-modified { background:#fffbeb; border-left:3px solid #d97706; color:#92400e; }
+    .lease-tag { font-size:12px; padding:3px 10px; border-radius:12px; background:#ede9fe; color:#5b21b6; }
     .loader { text-align: center; padding: 1.5rem; color: #64748b; font-size: 13px; display: none; }
     .examples { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; align-items: center; }
     .chip { font-size: 12px; padding: 5px 12px; border-radius: 20px; border: 1px solid #ddd; cursor: pointer; background: #fff; color: #555; }
     .chip:hover { border-color: #7c3aed; color: #7c3aed; }
   </style>
+  <link rel="stylesheet" href="paraiq-sidebar.css">
 </head>
 <body>
-<nav class="nav">
-  <div class="nav-brand">NLP Legal Analyzer</div>
-  <div class="nav-links">
-    <a class="nav-link" href="home.html">🏠 Home</a>
-    <a class="nav-link" href="index.html">Analyzer</a>
-    <a class="nav-link" href="citations.html">Citations</a>
-    <a class="nav-link active" href="compare.html">Compare</a>
-    <a class="nav-link" href="risk.html">Risk</a>
-    <a class="nav-link" href="model.html">Model</a>
-    <a class="nav-link" href="audit.html">Audit</a>
-    <a class="nav-link" href="intake.html">📷 Intake</a>
-    <a class="nav-link" href="dashboard.html">Dashboard</a>
-  </div>
-</nav>
 
 <div class="page">
   <div class="page-title">📊 Document Comparison (#6)</div>
@@ -75,6 +61,7 @@
     <span style="font-size:12px;color:#9ca3af">Load example:</span>
     <span class="chip" onclick="loadExample()">Rakoff vs Stein opinions</span>
     <span class="chip" onclick="loadExample2()">Indictment vs Acquittal</span>
+    <span class="chip" onclick="loadLeaseExample()" style="border-color:#7c3aed;color:#7c3aed;font-weight:600">🏠 Lease v1 vs v2</span>
   </div>
 
   <div class="two-col">
@@ -136,18 +123,46 @@
       <div class="struct-grid" id="structGrid"></div>
     </div>
 
+    <div class="card" id="leaseCard" style="display:none">
+      <div class="card-title" style="color:#7c3aed">🏠 Lease Clause Analysis</div>
+      <div id="leaseLoader" style="font-size:12px;color:#64748b;padding:8px 0">Analyzing lease clauses...</div>
+      <div id="leaseResults" style="display:none">
+        <div style="margin-bottom:12px">
+          <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Key Term Changes</div>
+          <div id="leaseKeyTerms" class="tag-list"></div>
+        </div>
+        <div style="margin-bottom:12px">
+          <div style="font-size:11px;font-weight:700;color:#059669;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">✚ Added Clauses</div>
+          <div id="leaseAdded"></div>
+        </div>
+        <div style="margin-bottom:12px">
+          <div style="font-size:11px;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">✕ Removed Clauses</div>
+          <div id="leaseRemoved"></div>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:#d97706;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">⚡ Modified Clauses</div>
+          <div id="leaseModified"></div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 
 <script>
-  const API = 'http://localhost:8000';
+  // ParaIQ API authentication key
+  const PARAIQ_KEY = 'pk-84d8657019538fb44aeee9a6a58b2342c5b819c4cceecb3996570d9e980afa40';
+  const API = 'https://nlp.para-iq.com';
+  let isLeaseMode = false;
 
   function loadExample() {
+    isLeaseMode = false;
     document.getElementById('docA').value = "Judge Rakoff sentenced Estrada for wire fraud in New York under 18 U.S.C. 1343. The United States Attorney sought forfeiture of $2 million dollars from the defendant.";
     document.getElementById('docB').value = "Judge Stein issued an opinion on the Estrada wire fraud case in the Southern District of New York. The grand jury had indicted Estrada in February 2012 on three counts.";
   }
 
   function loadExample2() {
+    isLeaseMode = false;
     document.getElementById('docA').value = "A grand jury indicted the defendant on three counts of wire fraud and conspiracy. The United States Attorney presented overwhelming evidence. The jury convicted the defendant on all counts. Sentencing was scheduled for September 2024.";
     document.getElementById('docB').value = "The defendant was acquitted of all charges by the jury. The court found the evidence insufficient to support a conviction beyond reasonable doubt. All charges were dismissed with prejudice. The defendant was released immediately.";
   }
@@ -161,6 +176,106 @@
       'distinct':        '#dc2626'
     };
     return map[label] || '#64748b';
+  }
+
+  function loadLeaseExample() {
+    isLeaseMode = true;
+    document.getElementById('docA').value = `RESIDENTIAL LEASE AGREEMENT — VERSION 1
+
+This Lease Agreement is entered into on December 1, 2024, between Landlord: Pacific Properties LLC ("Landlord") and Tenant: John Smith ("Tenant").
+
+1. PREMISES: The Landlord agrees to lease the property located at 142 Ocean Drive, Apt 4B, Santa Monica, CA 90401.
+
+2. TERM: The lease term shall commence on January 1, 2025 and shall terminate on December 31, 2025, a period of 12 months.
+
+3. RENT: Tenant agrees to pay monthly rent of $3,500.00, due on the first day of each month. Rent shall be paid by bank transfer to the account designated by Landlord.
+
+4. LATE FEE: If rent is not received within 5 days of the due date, a late fee of $50.00 shall be assessed.
+
+5. SECURITY DEPOSIT: Tenant shall deposit $7,000.00 as a security deposit prior to occupancy. The deposit shall be returned within 21 days of vacating the premises, less any deductions for damages beyond normal wear and tear.
+
+6. UTILITIES: Tenant is responsible for electricity, gas, and internet. Landlord provides water and trash collection.
+
+7. PET POLICY: No pets of any kind are permitted on the premises without prior written consent of the Landlord.
+
+8. SUBLETTING: Tenant may not sublet or assign this lease without the prior written consent of the Landlord.
+
+9. MAINTENANCE: Tenant is responsible for lawn mowing and garden upkeep on a weekly basis.
+
+10. NOTICE TO VACATE: Tenant must provide 30 days written notice prior to vacating the premises.
+
+11. GOVERNING LAW: This Agreement shall be governed by the laws of the State of California.`;
+
+    document.getElementById('docB').value = `RESIDENTIAL LEASE AGREEMENT — VERSION 2 (REVISED)
+
+This Lease Agreement is entered into on December 1, 2024, between Landlord: Pacific Properties LLC ("Landlord") and Tenant: John Smith ("Tenant").
+
+1. PREMISES: The Landlord agrees to lease the property located at 142 Ocean Drive, Apt 4B, Santa Monica, CA 90401.
+
+2. TERM: The lease term shall commence on January 1, 2025 and shall terminate on December 31, 2026, a period of 24 months.
+
+3. RENT: Tenant agrees to pay monthly rent of $3,750.00, due on the first day of each month. Rent shall be paid by bank transfer to the account designated by Landlord. Rent shall increase by 3% on January 1, 2026.
+
+4. LATE FEE: If rent is not received within 3 days of the due date, a late fee of $75.00 shall be assessed. Repeated late payments (more than twice in any 12-month period) shall constitute grounds for termination.
+
+5. SECURITY DEPOSIT: Tenant shall deposit $7,500.00 as a security deposit prior to occupancy. The deposit shall be returned within 21 days of vacating the premises, less any deductions for damages beyond normal wear and tear.
+
+6. UTILITIES: Tenant is responsible for electricity, gas, and internet. Landlord provides water and trash collection.
+
+7. PET POLICY: One cat or dog under 25 lbs is permitted with an additional refundable pet deposit of $500.00 and written approval from Landlord. Tenant assumes full liability for any pet-related damages.
+
+8. SUBLETTING: Tenant may not sublet or assign this lease without the prior written consent of the Landlord.
+
+9. LANDLORD ENTRY: Landlord shall provide 48 hours written notice before entering the premises for inspection or repairs, except in cases of emergency.
+
+10. NOTICE TO VACATE: Tenant must provide 60 days written notice prior to vacating the premises.
+
+11. GOVERNING LAW: This Agreement shall be governed by the laws of the State of California.`;
+  }
+
+  async function analyzeLeaseClauses(docA, docB) {
+    const leaseCard = document.getElementById('leaseCard');
+    const leaseLoader = document.getElementById('leaseLoader');
+    const leaseResults = document.getElementById('leaseResults');
+    leaseCard.style.display = 'block';
+    leaseLoader.style.display = 'block';
+    leaseResults.style.display = 'none';
+
+    try {
+      const resp = await fetch('https://nlp.para-iq.com/documents/lease-diff', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-API-Key': PARAIQ_KEY },
+        body: JSON.stringify({ doc_a: docA, doc_b: docB })
+      });
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      const d = await resp.json();
+
+      // Key terms
+      document.getElementById('leaseKeyTerms').innerHTML = (d.key_term_changes || [])
+        .map(t => `<span class="lease-tag">${t}</span>`).join('') || '<span class="empty">No key term changes</span>';
+
+      // Added
+      document.getElementById('leaseAdded').innerHTML = (d.added || []).length
+        ? d.added.map(c => `<div class="clause-item clause-added"><strong>${c.clause}:</strong> ${c.detail}</div>`).join('')
+        : '<div class="empty">No clauses added</div>';
+
+      // Removed
+      document.getElementById('leaseRemoved').innerHTML = (d.removed || []).length
+        ? d.removed.map(c => `<div class="clause-item clause-removed"><strong>${c.clause}:</strong> ${c.detail}</div>`).join('')
+        : '<div class="empty">No clauses removed</div>';
+
+      // Modified
+      document.getElementById('leaseModified').innerHTML = (d.modified || []).length
+        ? d.modified.map(c => `<div class="clause-item clause-modified"><strong>${c.clause}:</strong> ${c.change}</div>`).join('')
+        : '<div class="empty">No clauses modified</div>';
+
+      leaseResults.style.display = 'block';
+    } catch(e) {
+      document.getElementById('leaseResults').innerHTML = `<p style="color:#dc2626;font-size:12px">Lease analysis error: ${e.message}</p>`;
+      leaseResults.style.display = 'block';
+    } finally {
+      leaseLoader.style.display = 'none';
+    }
   }
 
   async function compareDocs() {
@@ -177,7 +292,7 @@
     try {
       const resp = await fetch(`${API}/documents/compare`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-API-Key': PARAIQ_KEY },
         body: JSON.stringify({
           doc_a: docA, doc_b: docB,
           label_a: 'Document A', label_b: 'Document B',
@@ -251,9 +366,12 @@
       `;
 
       document.getElementById('results').style.display = 'block';
+      // Lease clause analysis — only for lease documents
+      if (isLeaseMode) analyzeLeaseClauses(docA, docB);
+      else document.getElementById('leaseCard').style.display = 'none';
 
     } catch(e) {
-      alert('Error: ' + e.message + '\n\nMake sure the API server is running at localhost:8000');
+      alert('Error: ' + e.message + '\n\nMake sure the API server is running at nlp.para-iq.com');
     } finally {
       btn.disabled = false;
       btn.textContent = 'Compare Documents';
@@ -261,7 +379,23 @@
     }
   }
 </script>
+  <script src="paraiq-sidebar.js"></script>
+  <script src="paraiq-persist.js"></script>
+  <script src="paraiq-export.js?v=2"></script>
+
+  <script>
+  document.addEventListener("DOMContentLoaded", function() {
+    if (typeof ParaIQExport !== "undefined") {
+      ParaIQExport.injectButton("compare", "Export Comparison PDF");
+    }
+  });
+  </script>
 </body>
 </html>
+
+
+
+
+
 
 

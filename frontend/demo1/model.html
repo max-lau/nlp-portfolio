@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -7,12 +7,6 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f1f5f9; color: #1a1a1a; }
-    .nav { background: #0f172a; padding: 0 2rem; display: flex; align-items: center; gap: 1.5rem; height: 56px; }
-    .nav-brand { font-size: 15px; font-weight: 700; color: #fff; }
-    .nav-links { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
-    .nav-link { font-size: 11px; font-weight: 500; padding: 5px 10px; border-radius: 6px; color: #94a3b8; text-decoration: none; border: none; background: transparent; cursor: pointer; white-space: nowrap; }
-    .nav-link:hover { background: #1e293b; color: #fff; }
-    .nav-link.active { background: #7c3aed; color: #fff; }
     .page { padding: 1.5rem 2rem; max-width: 860px; margin: 0 auto; }
     .page-title { font-size: 22px; font-weight: 700; color: #0f172a; margin-bottom: 4px; }
     .page-sub { font-size: 13px; color: #64748b; margin-bottom: 1.5rem; }
@@ -50,22 +44,9 @@
     .meta-label { font-size: 10px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.08em; }
     .meta-value { font-size: 14px; font-weight: 700; color: #0f172a; margin-top: 2px; }
   </style>
+  <link rel="stylesheet" href="paraiq-sidebar.css">
 </head>
 <body>
-<nav class="nav">
-  <div class="nav-brand">NLP Legal Analyzer</div>
-  <div class="nav-links">
-    <a class="nav-link" href="home.html">🏠 Home</a>
-    <a class="nav-link" href="index.html">Analyzer</a>
-    <a class="nav-link" href="citations.html">Citations</a>
-    <a class="nav-link" href="compare.html">Compare</a>
-    <a class="nav-link" href="risk.html">Risk</a>
-    <a class="nav-link active" href="model.html">Model</a>
-    <a class="nav-link" href="audit.html">Audit</a>
-    <a class="nav-link" href="intake.html">📷 Intake</a>
-    <a class="nav-link" href="dashboard.html">Dashboard</a>
-  </div>
-</nav>
 
 <div class="page">
   <div class="page-title">🧠 Fine-Tuned Legal Model</div>
@@ -117,7 +98,9 @@
 </div>
 
 <script>
-  const API = 'http://localhost:8000';
+  // ParaIQ API authentication key
+  const PARAIQ_KEY = 'pk-84d8657019538fb44aeee9a6a58b2342c5b819c4cceecb3996570d9e980afa40';
+  const API = 'https://nlp.para-iq.com';
   const EXAMPLES = {
     prosecution: "The jury convicted the defendant on all counts of wire fraud and money laundering. The United States Attorney sought maximum penalties.",
     defense:     "The defendant was acquitted of all charges. The court found the evidence insufficient and suppressed the illegally obtained evidence.",
@@ -231,7 +214,14 @@
 
   loadModelInfo();
 </script>
+  <script src="paraiq-sidebar.js"></script>
+  <script src="paraiq-persist.js"></script>
 </body>
 </html>
+
+
+
+
+
 
 

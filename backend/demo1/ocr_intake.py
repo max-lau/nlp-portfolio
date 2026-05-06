@@ -24,7 +24,7 @@ from PIL import Image
 import pytesseract
 import anthropic
 
-pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+pytesseract.pytesseract.tesseract_cmd = 'tesseract'
 
 router  = APIRouter()
 DB_PATH = "backend/demo1/analyses.db"

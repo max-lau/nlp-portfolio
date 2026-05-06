@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -7,12 +7,6 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f1f5f9; color: #1a1a1a; }
-    .nav { background: #0f172a; padding: 0 2rem; display: flex; align-items: center; gap: 1.5rem; height: 56px; flex-wrap: wrap; }
-    .nav-brand { font-size: 15px; font-weight: 700; color: #fff; }
-    .nav-links { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
-    .nav-link { font-size: 11px; font-weight: 500; padding: 5px 10px; border-radius: 6px; color: #94a3b8; text-decoration: none; border: none; background: transparent; cursor: pointer; white-space: nowrap; }
-    .nav-link:hover { background: #1e293b; color: #fff; }
-    .nav-link.active { background: #7c3aed; color: #fff; }
 
     .page { padding: 1.5rem 2rem; max-width: 1000px; margin: 0 auto; }
     .page-title { font-size: 22px; font-weight: 700; color: #0f172a; margin-bottom: 4px; }
@@ -108,23 +102,9 @@
     .alert-info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
     .alert-warn { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
   </style>
+  <link rel="stylesheet" href="paraiq-sidebar.css">
 </head>
 <body>
-
-<nav class="nav">
-  <div class="nav-brand">NLP Legal Analyzer</div>
-  <div class="nav-links">
-    <a class="nav-link" href="home.html">🏠 Home</a>
-    <a class="nav-link" href="index.html">Analyzer</a>
-    <a class="nav-link" href="risk.html">Risk</a>
-    <a class="nav-link" href="citations.html">Citations</a>
-    <a class="nav-link" href="compare.html">Compare</a>
-    <a class="nav-link" href="model.html">Model</a>
-    <a class="nav-link" href="audit.html">Audit</a>
-    <a class="nav-link active" href="intake.html">📷 Intake</a>
-    <a class="nav-link" href="dashboard.html">Dashboard</a>
-  </div>
-</nav>
 
 <div class="page">
   <div class="page-title">📷 OCR Document Intake</div>
@@ -262,7 +242,9 @@
 </div>
 
 <script>
-  const API = 'http://localhost:8000';
+  // ParaIQ API authentication key
+  const PARAIQ_KEY = 'pk-84d8657019538fb44aeee9a6a58b2342c5b819c4cceecb3996570d9e980afa40';
+  const API = 'https://nlp.para-iq.com';
   let currentMode = 'analyze';
   let currentFile = null;
 
@@ -460,7 +442,7 @@
     try {
       const resp = await fetch(`${API}/export/intake`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-API-Key": PARAIQ_KEY },
         body: JSON.stringify({
           ocr: lastResult.ocr, risk: lastResult.risk,
           entities: lastResult.entities || [],
@@ -499,8 +481,16 @@
     }
   }
 </script>
+  <script src="paraiq-sidebar.js"></script>
+  <script src="paraiq-persist.js"></script>
+  <script src="paraiq-export.js"></script>
 </body>
 </html>
+
+
+
+
+
 
 
 

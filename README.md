@@ -1,301 +1,169 @@
-\# NLP Portfolio — Text \& Legal Intelligence Demos
+# ParaIQ — NLP Legal Intelligence Platform
 
+AI-powered legal document analysis platform built with FastAPI, Python, and Claude AI.
+Designed for law firms, in-house counsel, and compliance teams to review contracts,
+extract obligations, identify risk, and accelerate legal workflows.
 
+**Live:** [https://app.para-iq.com](https://app.para-iq.com) · **API:** [https://nlp.para-iq.com](https://nlp.para-iq.com)
 
-Two production-style NLP demos built with FastAPI, Python, and Claude AI.
+---
 
-Designed to execute in the real-world legal field by applying AI platform for reviewing contracts, extracting obligations, identifying risk, and accelerating legal workflows.
- 
+## Modules (21 pages)
 
-Built for law firms, in-house counsel, and compliance teams.
+| Module | Description |
+|--------|-------------|
+| **Analyzer** | Sentiment analysis, named entity recognition, keyword extraction |
+| **Batch** | Bulk document analysis with CSV export |
+| **Timeline** | Chronological event extraction from legal documents |
+| **Dashboard** | Case management — create, track, and export case files |
+| **Insights** | Aggregate analytics across all stored analyses |
+| **Scorer** | NLP scoring across multiple dimensions |
+| **Risk** | Multi-category risk scoring with signal breakdown |
+| **Citations** | US Code, Federal Reporter, Westlaw citation extraction + CourtListener resolution |
+| **Compare** | Document similarity — cosine, Jaccard, entity overlap, citation diff, structural |
+| **Model** | Fine-tuned model management |
+| **Audit** | Full audit trail of all API activity |
+| **Intake** | OCR from photo/scan → text extraction + NLP analysis |
+| **Redaction** | PII and sensitive entity redaction |
+| **Redaction Review** | Review and approve redacted documents |
+| **Interrogation** | Deposition transcript analysis — diarization, contradiction detection, evasion flagging |
+| **Credibility** | Witness credibility scoring across 5 dimensions with radar chart |
+| **Deposition** | Deposition summary generation |
+| **Multilingual** | NLP analysis in 13 languages |
+| **Review** | Document review workflow |
 
+---
 
+## Tech Stack
 
-\## Demos
+- **Backend:** Python 3.12, FastAPI, Uvicorn, SQLite
+- **NLP / AI:** Anthropic Claude API (`claude-haiku-4-5-20251001`, `claude-sonnet-4-6`)
+- **PDF Export:** ReportLab
+- **OCR:** Tesseract / Google Vision
+- **Frontend:** Vanilla HTML/CSS/JavaScript (21 pages)
+- **Infrastructure:** Hetzner VPS, Cloudflare Tunnel, pm2
 
-| Demo | Description | Port |
-|------|-------------|------|
-| [Demo 1 — NLP Text Analyzer](./frontend/demo1/index.html) | Sentiment analysis, named entity recognition, keyword extraction | 8000 |
-| [Demo 1 — Timeline Extractor](./frontend/demo1/timeline.html) | Chronological event extraction from legal and business documents | 8000 |
-| [Demo 2 — Legal Intelligence Engine](./frontend/demo2/index.html) | Clause classification, risk scoring, obligation extraction | 8001 |
+---
+
+## Project Structure
+
+```
+nlp-portfolio/
+├── backend/
+│   └── demo1/
+│       ├── main.py                  # FastAPI app — core NLP endpoints
+│       ├── pdf_export.py            # Analysis, risk, case, intake PDF export
+│       ├── pdf_module_export.py     # Generic /export/module endpoint
+│       ├── pdf_utils.py             # Shared ReportLab utilities
+│       ├── interrogation_export.py  # Interrogation PDF export
+│       ├── document_comparison.py   # Document similarity router
+│       ├── risk_scorer.py           # Multi-category risk scoring
+│       ├── citation_resolver.py     # Legal citation extraction
+│       ├── case_management.py       # Case CRUD + documents
+│       ├── audit_trail.py           # Request audit middleware
+│       ├── auth.py                  # JWT authentication
+│       ├── multilingual.py          # 13-language NLP analysis
+│       ├── ocr_intake.py            # OCR intake pipeline
+│       └── analyses.db              # SQLite database
+├── frontend/
+│   └── demo1/                       # 21 HTML pages
+│       ├── paraiq-sidebar.css/js    # Shared sidebar navigation
+│       ├── paraiq-persist.js        # Analysis result persistence
+│       ├── paraiq-export.js         # PDF export utility
+│       └── *.html                   # Module pages
+├── .env                             # API keys (not committed)
+├── requirements.txt
+└── README.md
+```
+
+---
 
 ## API Endpoints
 
-### Demo 1 (port 8000)
-
+### Core Analysis
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/health` | Health check |
-| POST | `/analyze` | Sentiment, entities, keywords — auto-saved to SQLite |
-| POST | `/timeline` | Extract chronological events from any document |
-| GET | `/history` | Query past analyses with filters |
-| GET | `/stats` | Aggregate statistics across all stored analyses |
+| POST | `/analyze` | Sentiment, NER, keywords — saved to SQLite |
+| POST | `/batch` | Bulk document analysis |
+| POST | `/timeline` | Event extraction |
+| GET | `/stats` | Aggregate statistics |
 
+### Legal Modules
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/risk/score` | Multi-category risk scoring |
+| POST | `/documents/compare` | Document similarity analysis |
+| POST | `/documents/lease-diff` | Lease clause comparison (AI) |
+| POST | `/citations/extract` | Legal citation extraction |
+| POST | `/interrogate` | Transcript analysis |
+| POST | `/credibility/score` | Witness credibility scoring |
 
+### PDF Export
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/export/analysis` | Analysis result PDF |
+| POST | `/export/risk` | Risk report PDF |
+| POST | `/export/intake` | Intake report PDF |
+| POST | `/export/module` | Generic module PDF (all other modules) |
+| GET | `/export/case/{id}` | Case summary PDF |
 
-\## Tech Stack
+### Auth
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/auth/register` | Create account |
+| POST | `/auth/login` | Get JWT token |
+| GET | `/auth/me` | Current user info |
 
+All endpoints require `X-API-Key` header.
 
+---
 
-\- \*\*Backend:\*\* Python 3.14, FastAPI, Uvicorn
+## Quick Start
 
-\- \*\*NLP:\*\* Anthropic Claude API (claude-haiku-4-5), spaCy (notebook)
-
-\- \*\*Frontend:\*\* Vanilla HTML/CSS/JavaScript
-
-\- \*\*Key libraries:\*\* anthropic, pydantic, python-dotenv
-
-
-
-\## Project Structure
-
-
-
-nlp-portfolio/
-
-├── backend/
-
-│   ├── demo1/
-
-│   │   ├── main.py          # FastAPI app — sentiment, NER, keywords
-
-│   │   └── init.py
-
-│   └── demo2/
-
-│       ├── main.py          # FastAPI app — clause classification, risk scoring
-
-│       └── init.py
-
-├── frontend/
-
-│   ├── demo1/
-
-│   │   └── index.html       # NLP Text Analyzer UI
-
-│   └── demo2/
-
-│       └── index.html       # Legal Intelligence Engine UI
-
-├── notebooks/
-
-│   └── nlp\_concepts\_walkthrough.ipynb
-
-├── .env.example             # API key template
-
-├── .gitignore
-
-├── requirements.txt
-
-└── README.md
-
-
-
-\## Quick Start
-
-
-
-\### 1. Clone the repo
-
-
+### 1. Clone and set up environment
 
 ```bash
-
-git clone https://github.com/YOUR\_USERNAME/nlp-portfolio.git
-
+git clone https://github.com/max-lau/nlp-portfolio.git
 cd nlp-portfolio
-
-```
-
-
-
-\### 2. Create virtual environment
-
-
-
-```bash
-
 python -m venv .venv
-
-
-
-\# Windows
-
-.venv\\Scripts\\activate
-
-
-
-\# Mac/Linux
-
-source .venv/bin/activate
-
-```
-
-
-
-\### 3. Install dependencies
-
-
-
-```bash
-
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-
 ```
 
-
-
-\### 4. Set up your API key
-
-
+### 2. Configure environment
 
 ```bash
-
 cp .env.example .env
-
-\# Edit .env and add your Anthropic API key
-
-\# Get one at: https://console.anthropic.com
-
+# Add your keys to .env:
+# ANTHROPIC_API_KEY=...
+# PARAIQ_API_KEY=...
 ```
 
-
-
-\### 5. Run Demo 1 — NLP Text Analyzer
-
-
+### 3. Run the API
 
 ```bash
-
-uvicorn backend.demo1.main:app --reload --port 8000
-
+uvicorn backend.demo1.main:app --host 0.0.0.0 --port 5003
 ```
 
-
-
-Open `frontend/demo1/index.html` in your browser.
-
-
-
-\### 6. Run Demo 2 — Legal Intelligence Engine
-
-
+### 4. Serve the frontend
 
 ```bash
-
-uvicorn backend.demo2.main:app --reload --port 8001
-
+cd frontend/demo1
+python3 -m http.server 8080
+# Open http://localhost:8080/home.html
 ```
 
+---
 
+## Frontend Features
 
-Open `frontend/demo2/index.html` in your browser.
+- **Sidebar navigation** — fixed 220px sidebar across all 21 pages, grouped by module category, mobile-responsive with hamburger toggle
+- **Analysis persistence** — results auto-saved to localStorage, restore banner on return visit
+- **PDF export** — floating export button on all modules, structured ReportLab output with KV tables, data tables, and bullet sections
 
+---
 
+## Author
 
-\## API Endpoints
-
-
-
-\### Demo 1 (port 8000)
-
-
-
-| Method | Endpoint | Description |
-
-|--------|----------|-------------|
-
-| GET | `/health` | Health check |
-
-| POST | `/analyze` | Analyze text for sentiment, entities, keywords |
-
-
-
-\*\*Request body:\*\*
-
-```json
-
-{ "text": "Your text here..." }
-
-```
-
-
-
-\*\*Response:\*\*
-
-```json
-
-{
-
-&#x20; "sentiment": { "label": "positive", "score": 0.85, "explanation": "..." },
-
-&#x20; "entities": \[{ "text": "Apple", "type": "ORG" }],
-
-&#x20; "keywords": \[{ "word": "revenue", "importance": "high" }],
-
-&#x20; "tone": \["analytical", "confident"],
-
-&#x20; "summary": "Plain English summary..."
-
-}
-
-```
-
-
-
-\### Demo 2 (port 8001)
-
-
-
-| Method | Endpoint | Description |
-
-|--------|----------|-------------|
-
-| GET | `/health` | Health check |
-
-| POST | `/analyze` | Analyze legal document |
-
-
-
-\*\*Response includes:\*\* risk score, risk flags, clause classification,
-
-extracted entities, obligations, plain language summary.
-
-
-
-\## NLP Concepts Covered
-
-
-
-\- \*\*Sentiment Analysis\*\* — classifying emotional tone of text
-
-\- \*\*Named Entity Recognition (NER)\*\* — extracting people, orgs, locations, dates
-
-\- \*\*Keyword Extraction\*\* — identifying important terms by TF-IDF weight
-
-\- \*\*Text Classification\*\* — categorizing legal clauses by type
-
-\- \*\*Information Extraction\*\* — pulling structured data from unstructured text
-
-\- \*\*Risk Scoring\*\* — combining signals into an interpretable score
-
-
-
-\## Notebook
-
-
-
-See `notebooks/nlp\_concepts\_walkthrough.ipynb` for a step-by-step walkthrough
-
-of the NLP pipeline using spaCy and Hugging Face Transformers — showing how each
-
-component works under the hood.
-
-
-
-\## Author
-
-
-
-Maxwell L. — \[GitHub](https://github.com/max-lau)
-
+Maxwell L. — [GitHub](https://github.com/max-lau)
